@@ -9,6 +9,7 @@ import json
 import joblib
 import shutil
 import numpy as np
+import torch
 import os.path as osp, time, atexit, os
 from spinup.utils.mpi_tools import proc_id, mpi_statistics_scalar
 from spinup.utils.serialization_utils import convert_json
@@ -156,15 +157,14 @@ class Logger:
             with open(osp.join(self.output_dir, "config.json"), 'w') as out:
                 out.write(output)
 
-    def save_state(self, state_dict, itr=None):
+    def save_state(self, state_dict, policy, itr=None):
         """
         Saves the state of an experiment.
 
         To be clear: this is about saving *state*, not logging diagnostics.
         All diagnostic logging is separate from this function. This function
         will save whatever is in ``state_dict``---usually just a copy of the
-        environment---and the most recent parameters for the model you 
-        previously set up saving for with ``setup_tf_saver``. 
+        environment---and the most recent copy of the model via ``policy``.
 
         Call with any frequency you prefer. If you only want to maintain a
         single state and overwrite it at each call with the most recent 
@@ -174,7 +174,7 @@ class Logger:
         Args:
             state_dict (dict): Dictionary containing essential elements to
                 describe the current state of training.
-
+            policy (nn.Module): A policy.
             itr: An int, or None. Current iteration of training.
         """
         if proc_id()==0:
@@ -183,48 +183,13 @@ class Logger:
                 joblib.dump(state_dict, osp.join(self.output_dir, fname))
             except:
                 self.log('Warning: could not pickle state_dict.', color='red')
-            # if hasattr(self, 'tf_saver_elements'):
-            #     self._tf_simple_save(itr)
+            self._torch_save(policy, itr)
 
-    # def setup_tf_saver(self, sess, inputs, outputs):
-    #     """
-    #     Set up easy model saving for tensorflow.
+    def _torch_save(self, policy, itr=None):
+        if proc_id()==0:
+            fname = 'torch_save.pt' if itr is None else 'torch_save%d.pt'%itr
+            torch.save(policy, osp.join(self.output_dir, fname))
 
-    #     Call once, after defining your computation graph but before training.
-
-    #     Args:
-    #         sess: The Tensorflow session in which you train your computation
-    #             graph.
-
-    #         inputs (dict): A dictionary that maps from keys of your choice
-    #             to the tensorflow placeholders that serve as inputs to the 
-    #             computation graph. Make sure that *all* of the placeholders
-    #             needed for your outputs are included!
-
-    #         outputs (dict): A dictionary that maps from keys of your choice
-    #             to the outputs from your computation graph.
-    #     """
-    #     self.tf_saver_elements = dict(session=sess, inputs=inputs, outputs=outputs)
-    #     self.tf_saver_info = {'inputs': {k:v.name for k,v in inputs.items()},
-    #                           'outputs': {k:v.name for k,v in outputs.items()}}
-
-    # def _tf_simple_save(self, itr=None):
-    #     """
-    #     Uses simple_save to save a trained model, plus info to make it easy
-    #     to associated tensors to variables after restore. 
-    #     """
-    #     if proc_id()==0:
-    #         assert hasattr(self, 'tf_saver_elements'), \
-    #             "First have to setup saving with self.setup_tf_saver"
-    #         fpath = 'simple_save' + ('%d'%itr if itr is not None else '')
-    #         fpath = osp.join(self.output_dir, fpath)
-    #         if osp.exists(fpath):
-    #             # simple_save refuses to be useful if fpath already exists,
-    #             # so just delete fpath if it's there.
-    #             shutil.rmtree(fpath)
-    #         tf.saved_model.simple_save(export_dir=fpath, **self.tf_saver_elements)
-    #         joblib.dump(self.tf_saver_info, osp.join(fpath, 'model_info.pkl'))
-    
     def dump_tabular(self):
         """
         Write all of the diagnostics from the current iteration.

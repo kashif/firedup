@@ -77,8 +77,8 @@ class CategoricalPolicy(nn.Module):
         policy = Categorical(logits=logits)
 
         pi = policy.sample()
-
         logp_pi = policy.log_prob(pi)
+        
         if a is not None:
             logp = policy.log_prob(a)
         else:

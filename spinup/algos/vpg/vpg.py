@@ -123,12 +123,16 @@ def vpg(env_fn,
     local_steps_per_epoch = int(steps_per_epoch / num_procs())
     buf = VPGBuffer(obs_dim, act_dim, local_steps_per_epoch, gamma, lam)
 
+    # Count variables
+    var_counts = (sum(p.numel() for p in actor_critic.policy.parameters() if p.requires_grad),
+                  sum(p.numel() for p in actor_critic.value_function.parameters() if p.requires_grad))
+    logger.log('\nNumber of parameters: \t pi: %d, \t v: %d\n'%var_counts)
+
     # Optimizers
     train_pi = torch.optim.Adam(actor_critic.policy.parameters(),
                                 lr=pi_lr)
     train_v = torch.optim.Adam(actor_critic.value_function.parameters(),
                                lr=vf_lr)
-
 
     start_time = time.time()
     o, r, d, ep_ret, ep_len = env.reset(), 0, False, 0, 0
@@ -159,6 +163,10 @@ def vpg(env_fn,
                     # only save EpRet / EpLen if trajectory finished
                     logger.store(EpRet=ep_ret, EpLen=ep_len)
                 o, r, d, ep_ret, ep_len = env.reset(), 0, False, 0, 0
+
+        # Save model
+        if (epoch % save_freq == 0) or (epoch == epochs-1):
+            logger.save_state({'env': env}, actor_critic, None)
 
         # Perform VPG update!
         actor_critic.train()
