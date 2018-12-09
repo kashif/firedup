@@ -147,9 +147,6 @@ def vpg(env_fn,
             buf.store(o, a.data.numpy(), r, v_t.item(), logp_t.data.numpy())
             logger.store(VVals=v_t)
 
-            import pdb
-            pdb.set_trace()
-
             o, r, d, _ = env.step(a.data.numpy()[0])
             ep_ret += r
             ep_len += 1
