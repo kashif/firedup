@@ -4,7 +4,6 @@ import time
 import spinup.algos.vpg.core as core
 from spinup.utils.logx import EpochLogger
 import torch
-from torch.autograd import Variable
 #from spinup.utils.mpi_tf import MpiAdamOptimizer, sync_all_params
 from spinup.utils.mpi_tools import mpi_fork, mpi_avg, proc_id, mpi_statistics_scalar, num_procs
 
@@ -148,6 +147,9 @@ def vpg(env_fn,
             buf.store(o, a.data.numpy(), r, v_t.item(), logp_t.data.numpy())
             logger.store(VVals=v_t)
 
+            import pdb
+            pdb.set_trace()
+
             o, r, d, _ = env.step(a.data.numpy()[0])
             ep_ret += r
             ep_len += 1
@@ -172,7 +174,7 @@ def vpg(env_fn,
         actor_critic.train()
         train_pi.zero_grad()
 
-        x, a, adv, ret, logp_old = [Variable(torch.Tensor(x)) for x in buf.get()]
+        x, a, adv, ret, logp_old = [torch.Tensor(x) for x in buf.get()]
         
         # Main outputs from computation graph
         pi, logp, logp_pi, v = actor_critic(x, a)
