@@ -4,7 +4,7 @@ import time
 import spinup.algos.vpg.core as core
 from spinup.utils.logx import EpochLogger
 import torch
-#from spinup.utils.mpi_tf import MpiAdamOptimizer, sync_all_params
+from spinup.utils.mpi_pytorch import average_gradients, sync_all_params
 from spinup.utils.mpi_tools import mpi_fork, mpi_avg, proc_id, mpi_statistics_scalar, num_procs
 
 
@@ -133,6 +133,9 @@ def vpg(env_fn,
     train_v = torch.optim.Adam(actor_critic.value_function.parameters(),
                                lr=vf_lr)
 
+    # Sync params across processes
+    sync_all_params(actor_critic)
+
     start_time = time.time()
     o, r, d, ep_ret, ep_len = env.reset(), 0, False, 0, 0
 
@@ -188,12 +191,14 @@ def vpg(env_fn,
 
         # Policy gradient step
         pi_loss.backward()
+        average_gradients(actor_critic.policy)
         train_pi.step()
         
         # Value function learning
         for _ in range(train_v_iters):
             train_v.zero_grad()
             v_loss.backward(retain_graph=True)
+            average_gradients(actor_critic.value_function)
             train_v.step()
 
         # Log changes from update
