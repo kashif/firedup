@@ -20,7 +20,6 @@ class VPGBuffer:
             return (length,)
         return (length, shape) if np.isscalar(shape) else (length, *shape)
 
-
     def __init__(self, obs_dim, act_dim, size, gamma=0.99, lam=0.95):
         self.obs_buf = np.zeros(self._combined_shape(size, obs_dim), dtype=np.float32)
         self.act_buf = np.zeros(self._combined_shape(size, act_dim), dtype=np.float32)
@@ -86,6 +85,7 @@ class VPGBuffer:
         self.adv_buf = (self.adv_buf - adv_mean) / adv_std
         return [self.obs_buf, self.act_buf, self.adv_buf, 
                 self.ret_buf, self.logp_buf]
+
 
 def vpg(env_fn, 
         actor_critic=core.ActorCritic,
