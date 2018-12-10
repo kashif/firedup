@@ -134,7 +134,7 @@ def vpg(env_fn,
                                lr=vf_lr)
 
     # Sync params across processes
-    sync_all_params(actor_critic)
+    sync_all_params(actor_critic.state_dict())
 
     start_time = time.time()
     o, r, d, ep_ret, ep_len = env.reset(), 0, False, 0, 0
@@ -179,7 +179,7 @@ def vpg(env_fn,
         # Main outputs from computation graph
         pi, logp, logp_pi, v = actor_critic(x, a)
 
-         # VPG objectives
+        # VPG objectives
         pi_loss = -torch.mean(logp * adv)
         v_loss = torch.mean((ret - v)**2)
 
@@ -191,14 +191,14 @@ def vpg(env_fn,
 
         # Policy gradient step
         pi_loss.backward()
-        average_gradients(actor_critic.policy)
+        average_gradients(train_pi.param_groups)
         train_pi.step()
         
         # Value function learning
         for _ in range(train_v_iters):
             train_v.zero_grad()
             v_loss.backward(retain_graph=True)
-            average_gradients(actor_critic.value_function)
+            average_gradients(train_v.param_groups)
             train_v.step()
 
         # Log changes from update
