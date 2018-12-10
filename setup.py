@@ -23,6 +23,7 @@ setup(
         'psutil',
         'scipy',
         'seaborn',
+        'torch',
         'tqdm'
     ],
     description="Teaching tools for introducing people to deep RL.",
