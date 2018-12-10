@@ -4,7 +4,7 @@ import time
 import spinup.algos.vpg.core as core
 from spinup.utils.logx import EpochLogger
 import torch
-from spinup.utils.mpi_pytorch import average_gradients, sync_all_params
+from spinup.utils.mpi_torch import average_gradients, sync_all_params
 from spinup.utils.mpi_tools import mpi_fork, proc_id, mpi_statistics_scalar, num_procs
 
 
