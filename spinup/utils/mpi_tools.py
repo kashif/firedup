@@ -35,7 +35,6 @@ def mpi_fork(n, bind_to_core=False):
         subprocess.check_call(args, env=env)
         sys.exit()
 
-
 def msg(m, string=''):
     print(('Message from %d: %s \t '%(MPI.COMM_WORLD.Get_rank(), string))+str(m))
 
