@@ -280,7 +280,7 @@ def ppo(env_fn,
 
             _, logp, _ = actor_critic.policy(x, a)
             kl = torch.mean(logp_old - logp)
-            kl = mpi_avg(kl)
+            kl = mpi_avg(kl.item())
             if kl > 1.5 * target_kl:
                 logger.log('Early stopping at step %d due to reaching max kl.'%i)
                 break
