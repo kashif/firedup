@@ -86,7 +86,13 @@ class VPGBuffer:
         return [self.obs_buf, self.act_buf, self.adv_buf, 
                 self.ret_buf, self.logp_buf]
 
+"""
 
+Vanilla Policy Gradient
+
+(with GAE-Lambda for advantage estimation)
+
+"""
 def vpg(env_fn, 
         actor_critic=core.ActorCritic,
         ac_kwargs=dict(),
@@ -229,15 +235,15 @@ def vpg(env_fn,
         if (epoch % save_freq == 0) or (epoch == epochs-1):
             logger.save_state({'env': env}, actor_critic, None)
 
+        # Inputs
+        x, a, adv, ret, logp_old = [torch.Tensor(x) for x in buf.get()]
+
         # Perform VPG update!
         actor_critic.train()
-        x, a, adv, ret, logp_old = [torch.Tensor(x) for x in buf.get()]
         
-        # Main outputs from policy graph
-        pi, logp, logp_pi = actor_critic.policy(x, a)
-
-        # a sample estimate for entropy, easy to compute
-        ent = torch.mean(-logp)
+        # Training policy
+        _, logp, _ = actor_critic.policy(x, a)
+        ent = torch.mean(-logp) # a sample estimate for entropy
 
         # VPG policy objective
         pi_loss = -torch.mean(logp * adv)
@@ -264,11 +270,10 @@ def vpg(env_fn,
             train_v.step()
 
         # Log changes from update
-        pi, logp, logp_pi, v = actor_critic(x, a)
+        _, logp, _, v = actor_critic(x, a)
         pi_l_new = -torch.mean(logp * adv)
         v_l_new = torch.mean((ret - v)**2)
-        # a sample estimate for KL-divergence, easy to compute
-        kl = torch.mean(logp_old - logp)
+        kl = torch.mean(logp_old - logp) # a sample estimate for KL-divergence, easy to compute
         logger.store(LossPi=pi_loss, LossV=v_l_old, 
                      KL=kl, Entropy=ent, 
                      DeltaLossPi=(pi_l_new - pi_loss),
