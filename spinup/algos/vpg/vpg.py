@@ -113,7 +113,7 @@ def vpg(env_fn,
         env_fn : A function which creates a copy of the environment.
             The environment must satisfy the OpenAI Gym API.
 
-        actor_critic: The agent's main model  which is composed of
+        actor_critic: The agent's main model which is composed of
             the policy and value function model, where the policy takes
             some state, ``x``, and action, ``a``, and value function takes
             the state ``x`` and returns a tuple of:
@@ -273,9 +273,9 @@ def vpg(env_fn,
         _, logp, _, v = actor_critic(x, a)
         pi_l_new = -torch.mean(logp * adv)
         v_l_new = torch.mean((ret - v)**2)
-        kl = torch.mean(logp_old - logp) # a sample estimate for KL-divergence, easy to compute
-        logger.store(LossPi=pi_loss, LossV=v_l_old, 
-                     KL=kl, Entropy=ent, 
+        kl = torch.mean(logp_old - logp) # a sample estimate for KL-divergence
+        logger.store(LossPi=pi_loss, LossV=v_l_old,
+                     KL=kl, Entropy=ent,
                      DeltaLossPi=(pi_l_new - pi_loss),
                      DeltaLossV=(v_l_new - v_l_old))
 

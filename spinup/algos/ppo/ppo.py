@@ -117,9 +117,10 @@ def ppo(env_fn,
         env_fn : A function which creates a copy of the environment.
             The environment must satisfy the OpenAI Gym API.
 
-        actor_critic: A function which takes in placeholder symbols 
-            for state, ``x_ph``, and action, ``a_ph``, and returns the main 
-            outputs from the agent's Tensorflow computation graph:
+        actor_critic: The agent's main model which is composed of
+            the policy and value function model, where the policy takes
+            some state, ``x``, and action, ``a``, and value function takes
+            the state ``x`` and returns a tuple of:
 
             ===========  ================  ======================================
             Symbol       Shape             Description
@@ -127,18 +128,18 @@ def ppo(env_fn,
             ``pi``       (batch, act_dim)  | Samples actions from policy given 
                                            | states.
             ``logp``     (batch,)          | Gives log probability, according to
-                                           | the policy, of taking actions ``a_ph``
-                                           | in states ``x_ph``.
+                                           | the policy, of taking actions ``a``
+                                           | in states ``x``.
             ``logp_pi``  (batch,)          | Gives log probability, according to
                                            | the policy, of the action sampled by
                                            | ``pi``.
             ``v``        (batch,)          | Gives the value estimate for states
-                                           | in ``x_ph``. (Critical: make sure 
-                                           | to flatten this!)
+                                           | in ``x``. (Critical: make sure 
+                                           | to flatten this via .item()!)
             ===========  ================  ======================================
 
         ac_kwargs (dict): Any kwargs appropriate for the actor_critic 
-            function you provided to PPO.
+            class you provided to PPO.
 
         seed (int): Seed for random number generators.
 
