@@ -66,6 +66,7 @@ class CategoricalPolicy(nn.Module):
     def __init__(self, in_features,
                  hidden_sizes,
                  activation,
+                 output_activation,
                  action_space):
         super(CategoricalPolicy, self).__init__()
         
@@ -123,12 +124,11 @@ class GaussianPolicy(nn.Module):
 
 
 class ActorCritic(nn.Module):
-    def __init__(self, in_features,
+    def __init__(self, in_features, action_space,
                  hidden_sizes=(64, 64),
                  activation=nn.Tanh,
                  output_activation=None,
-                 policy=None,
-                 action_space=None):
+                 policy=None):
         super(ActorCritic, self).__init__()
 
         if policy is None and isinstance(action_space, Box):
@@ -141,9 +141,14 @@ class ActorCritic(nn.Module):
             self.policy = CategoricalPolicy(in_features,
                                             hidden_sizes,
                                             activation,
+                                            output_activation,
                                             action_space)
         else:
-            self.policy = policy
+            self.policy = policy(in_features,
+                                 hidden_sizes,
+                                 activation,
+                                 output_activation,
+                                 action_space)
         
         self.value_function = MLP(in_features, 
                                   list(hidden_sizes)+[1],
