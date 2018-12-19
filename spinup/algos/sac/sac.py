@@ -158,6 +158,7 @@ def sac(env_fn,
 
     # Target value network
     target = actor_critic(in_features=obs_dim, **ac_kwargs)
+    target.eval()
 
     # Experience buffer
     replay_buffer = ReplayBuffer(obs_dim=obs_dim, act_dim=act_dim, size=replay_size)
@@ -184,6 +185,7 @@ def sac(env_fn,
         return mu.data.numpy()[0] if deterministic else pi.data.numpy()[0]
 
     def test_agent(n=10):
+        main.eval()
         for _ in range(n):
             o, r, d, ep_ret, ep_len = test_env.reset(), 0, False, 0, 0
             while not(d or (ep_len == max_ep_len)):
@@ -233,6 +235,7 @@ def sac(env_fn,
             This is a slight difference from the SAC specified in the
             original paper.
             """
+            main.train()
             for _ in range(ep_len):
                 batch = replay_buffer.sample_batch(batch_size)
                 (x, x2, a, r, d) = (torch.Tensor(batch['obs1']), 
