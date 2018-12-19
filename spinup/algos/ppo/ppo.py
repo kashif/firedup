@@ -206,15 +206,13 @@ def ppo(env_fn,
     buf = PPOBuffer(obs_dim, act_dim, local_steps_per_epoch, gamma, lam)
 
     # Count variables
-    var_counts = tuple(core.count_vars(params) for params in
-        [actor_critic.policy.parameters(), actor_critic.value_function.parameters()])
+    var_counts = tuple(core.count_vars(module) for module in
+        [actor_critic.policy, actor_critic.value_function])
     logger.log('\nNumber of parameters: \t pi: %d, \t v: %d\n'%var_counts)
 
     # Optimizers
-    train_pi = torch.optim.Adam(actor_critic.policy.parameters(),
-                                lr=pi_lr)
-    train_v = torch.optim.Adam(actor_critic.value_function.parameters(),
-                               lr=vf_lr)
+    train_pi = torch.optim.Adam(actor_critic.policy.parameters(), lr=pi_lr)
+    train_v = torch.optim.Adam(actor_critic.value_function.parameters(), lr=vf_lr)
 
     # Sync params across processes
     sync_all_params(actor_critic.state_dict())

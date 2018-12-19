@@ -25,8 +25,8 @@ def discount_cumsum(x, discount):
     """
     return scipy.signal.lfilter([1], [1, float(-discount)], x[::-1], axis=0)[::-1]
 
-def count_vars(params):
-    return sum(p.numel() for p in params if p.requires_grad)
+def count_vars(module):
+    return sum(p.numel() for p in module.parameters() if p.requires_grad)
 
 
 class MLP(nn.Module):
