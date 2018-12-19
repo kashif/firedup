@@ -46,16 +46,16 @@ Soft Actor-Critic
 def sac(env_fn,
         actor_critic=core.ActorCritic,
         ac_kwargs=dict(),
-        seed=0, 
+        seed=0,
         steps_per_epoch=5000,
         epochs=100,
         replay_size=int(1e6),
-        gamma=0.99, 
+        gamma=0.99,
         polyak=0.995,
         lr=1e-3,
         alpha=0.2,
         batch_size=100,
-        start_steps=10000, 
+        start_steps=10000,
         max_ep_len=1000,
         logger_kwargs=dict(),
         save_freq=1):
@@ -65,8 +65,8 @@ def sac(env_fn,
         env_fn : A function which creates a copy of the environment.
             The environment must satisfy the OpenAI Gym API.
 
-        actor_critic: A function which takes in placeholder symbols 
-            for state, ``x_ph``, and action, ``a_ph``, and returns the main 
+        actor_critic: A function which takes in placeholder symbols
+            for state, ``x_ph``, and action, ``a_ph``, and returns the main
             outputs from the agent's Tensorflow computation graph:
 
             ===========  ================  ======================================
@@ -74,35 +74,35 @@ def sac(env_fn,
             ===========  ================  ======================================
             ``mu``       (batch, act_dim)  | Computes mean actions from policy
                                            | given states.
-            ``pi``       (batch, act_dim)  | Samples actions from policy given 
+            ``pi``       (batch, act_dim)  | Samples actions from policy given
                                            | states.
             ``logp_pi``  (batch,)          | Gives log probability, according to
                                            | the policy, of the action sampled by
                                            | ``pi``. Critical: must be differentiable
                                            | with respect to policy parameters all
                                            | the way through action sampling.
-            ``q1``       (batch,)          | Gives one estimate of Q* for 
+            ``q1``       (batch,)          | Gives one estimate of Q* for
                                            | states in ``x_ph`` and actions in
                                            | ``a_ph``.
-            ``q2``       (batch,)          | Gives another estimate of Q* for 
+            ``q2``       (batch,)          | Gives another estimate of Q* for
                                            | states in ``x_ph`` and actions in
                                            | ``a_ph``.
-            ``q1_pi``    (batch,)          | Gives the composition of ``q1`` and 
-                                           | ``pi`` for states in ``x_ph``: 
+            ``q1_pi``    (batch,)          | Gives the composition of ``q1`` and
+                                           | ``pi`` for states in ``x_ph``:
                                            | q1(x, pi(x)).
-            ``q2_pi``    (batch,)          | Gives the composition of ``q2`` and 
-                                           | ``pi`` for states in ``x_ph``: 
+            ``q2_pi``    (batch,)          | Gives the composition of ``q2`` and
+                                           | ``pi`` for states in ``x_ph``:
                                            | q2(x, pi(x)).
             ``v``        (batch,)          | Gives the value estimate for states
-                                           | in ``x_ph``. 
+                                           | in ``x_ph``.
             ===========  ================  ======================================
 
-        ac_kwargs (dict): Any kwargs appropriate for the actor_critic 
+        ac_kwargs (dict): Any kwargs appropriate for the actor_critic
             function you provided to SAC.
 
         seed (int): Seed for random number generators.
 
-        steps_per_epoch (int): Number of steps of interaction (state-action pairs) 
+        steps_per_epoch (int): Number of steps of interaction (state-action pairs)
             for the agent and the environment in each epoch.
 
         epochs (int): Number of epochs to run and train agent.
@@ -111,19 +111,19 @@ def sac(env_fn,
 
         gamma (float): Discount factor. (Always between 0 and 1.)
 
-        polyak (float): Interpolation factor in polyak averaging for target 
-            networks. Target networks are updated towards main networks 
+        polyak (float): Interpolation factor in polyak averaging for target
+            networks. Target networks are updated towards main networks
             according to:
 
-            .. math:: \\theta_{\\text{targ}} \\leftarrow 
+            .. math:: \\theta_{\\text{targ}} \\leftarrow
                 \\rho \\theta_{\\text{targ}} + (1-\\rho) \\theta
 
-            where :math:`\\rho` is polyak. (Always between 0 and 1, usually 
+            where :math:`\\rho` is polyak. (Always between 0 and 1, usually
             close to 1.)
 
         lr (float): Learning rate (used for both policy and value learning).
 
-        alpha (float): Entropy regularization coefficient. (Equivalent to 
+        alpha (float): Entropy regularization coefficient. (Equivalent to
             inverse of reward scale in the original SAC paper.)
 
         batch_size (int): Minibatch size for SGD.
@@ -164,12 +164,12 @@ def sac(env_fn,
     replay_buffer = ReplayBuffer(obs_dim=obs_dim, act_dim=act_dim, size=replay_size)
 
     # Count variables
-    var_counts = tuple(core.count_vars(module) for module in 
+    var_counts = tuple(core.count_vars(module) for module in
                        [main.policy, main.q1, main.q2, main.vf_mlp, main])
     print(('\nNumber of parameters: \t pi: %d, \t' + \
            'q1: %d, \t q2: %d, \t v: %d, \t total: %d\n')%var_counts)
 
-    # Policy train op 
+    # Policy train op
     # (has to be separate from value train op, because q1_pi appears in pi_loss)
     pi_optimizer = torch.optim.Adam(main.policy.parameters(), lr=lr)
 
@@ -189,7 +189,7 @@ def sac(env_fn,
         for _ in range(n):
             o, r, d, ep_ret, ep_len = test_env.reset(), 0, False, 0, 0
             while not(d or (ep_len == max_ep_len)):
-                # Take deterministic actions at test time 
+                # Take deterministic actions at test time
                 o, r, d, _ = test_env.step(get_action(o, True))
                 ep_ret += r
                 ep_len += 1
@@ -201,11 +201,11 @@ def sac(env_fn,
 
     # Main loop: collect experience in env and update/log each epoch
     for t in range(total_steps):
-
+        main.eval()
         """
         Until start_steps have elapsed, randomly sample actions
-        from a uniform distribution for better exploration. Afterwards, 
-        use the learned policy. 
+        from a uniform distribution for better exploration. Afterwards,
+        use the learned policy.
         """
         if t > start_steps:
             a = get_action(o)
@@ -225,7 +225,7 @@ def sac(env_fn,
         # Store experience to replay buffer
         replay_buffer.store(o, a, r, o2, d)
 
-        # Super critical, easy to overlook step: make sure to update 
+        # Super critical, easy to overlook step: make sure to update
         # most recent observation!
         o = o2
 
@@ -238,7 +238,7 @@ def sac(env_fn,
             main.train()
             for _ in range(ep_len):
                 batch = replay_buffer.sample_batch(batch_size)
-                (x, x2, a, r, d) = (torch.Tensor(batch['obs1']), 
+                (x, x2, a, r, d) = (torch.Tensor(batch['obs1']),
                                     torch.Tensor(batch['obs2']),
                                     torch.Tensor(batch['acts']),
                                     torch.Tensor(batch['rews']),
@@ -248,7 +248,7 @@ def sac(env_fn,
 
                 # Min Double-Q:
                 min_q_pi = torch.min(q1_pi, q2_pi)
-                
+
                 # Targets for Q and V regression
                 q_backup = (r + gamma*(1 - d)*v_targ).detach()
                 v_backup = (min_q_pi - alpha * logp_pi).detach()
@@ -269,7 +269,7 @@ def sac(env_fn,
                 value_optimizer.zero_grad()
                 value_loss.backward()
                 value_optimizer.step()
-    
+
                 # Polyak averaging for target variables
                 for v_main, v_target in zip(main.vf_mlp.parameters(), target.vf_mlp.parameters()):
                     v_target.data.copy_(polyak*v_target.data + (1 - polyak)*v_main.data)
@@ -300,9 +300,9 @@ def sac(env_fn,
             logger.log_tabular('EpLen', average_only=True)
             logger.log_tabular('TestEpLen', average_only=True)
             logger.log_tabular('TotalEnvInteracts', t)
-            logger.log_tabular('Q1Vals', with_min_and_max=True) 
-            logger.log_tabular('Q2Vals', with_min_and_max=True) 
-            logger.log_tabular('VVals', with_min_and_max=True) 
+            logger.log_tabular('Q1Vals', with_min_and_max=True)
+            logger.log_tabular('Q2Vals', with_min_and_max=True)
+            logger.log_tabular('VVals', with_min_and_max=True)
             logger.log_tabular('LogPi', with_min_and_max=True)
             logger.log_tabular('LossPi', average_only=True)
             logger.log_tabular('LossQ1', average_only=True)

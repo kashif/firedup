@@ -72,6 +72,6 @@ if __name__ == '__main__':
     parser.add_argument('--norender', '-nr', action='store_true')
     parser.add_argument('--itr', '-i', type=int, default=-1)
     args = parser.parse_args()
-    env, get_action = load_policy(args.fpath, 
+    env, get_action = load_policy(args.fpath,
                                   args.itr if args.itr >=0 else 'last')
     run_policy(env, get_action, args.len, args.episodes, not(args.norender))

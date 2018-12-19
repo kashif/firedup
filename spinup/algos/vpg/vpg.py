@@ -62,14 +62,14 @@ class VPGBuffer:
         path_slice = slice(self.path_start_idx, self.ptr)
         rews = np.append(self.rew_buf[path_slice], last_val)
         vals = np.append(self.val_buf[path_slice], last_val)
-        
+
         # the next two lines implement GAE-Lambda advantage calculation
         deltas = rews[:-1] + self.gamma * vals[1:] - vals[:-1]
         self.adv_buf[path_slice] = core.discount_cumsum(deltas, self.gamma * self.lam)
-        
+
         # the next line computes rewards-to-go, to be targets for the value function
         self.ret_buf[path_slice] = core.discount_cumsum(rews, self.gamma)[:-1]
-        
+
         self.path_start_idx = self.ptr
 
     def get(self):
@@ -83,7 +83,7 @@ class VPGBuffer:
         # the next two lines implement the advantage normalization trick
         adv_mean, adv_std = mpi_statistics_scalar(self.adv_buf)
         self.adv_buf = (self.adv_buf - adv_mean) / adv_std
-        return [self.obs_buf, self.act_buf, self.adv_buf, 
+        return [self.obs_buf, self.act_buf, self.adv_buf,
                 self.ret_buf, self.logp_buf]
 
 """
@@ -93,10 +93,10 @@ Vanilla Policy Gradient
 (with GAE-Lambda for advantage estimation)
 
 """
-def vpg(env_fn, 
+def vpg(env_fn,
         actor_critic=core.ActorCritic,
         ac_kwargs=dict(),
-        seed=0, 
+        seed=0,
         steps_per_epoch=4000,
         epochs=50,
         gamma=0.99,
@@ -121,7 +121,7 @@ def vpg(env_fn,
             ===========  ================  ======================================
             Symbol       Shape             Description
             ===========  ================  ======================================
-            ``pi``       (batch, act_dim)  | Samples actions from policy given 
+            ``pi``       (batch, act_dim)  | Samples actions from policy given
                                            | states.
             ``logp``     (batch,)          | Gives log probability, according to
                                            | the policy, of taking actions ``a``
@@ -130,16 +130,16 @@ def vpg(env_fn,
                                            | the policy, of the action sampled by
                                            | ``pi``.
             ``v``        (batch,)          | Gives the value estimate for states
-                                           | in ``x``. (Critical: make sure 
+                                           | in ``x``. (Critical: make sure
                                            | to flatten this via .item()!)
             ===========  ================  ======================================
 
-        ac_kwargs (dict): Any kwargs appropriate for the actor_critic 
+        ac_kwargs (dict): Any kwargs appropriate for the actor_critic
             class you provided to VPG.
 
         seed (int): Seed for random number generators.
 
-        steps_per_epoch (int): Number of steps of interaction (state-action pairs) 
+        steps_per_epoch (int): Number of steps of interaction (state-action pairs)
             for the agent and the environment in each epoch.
 
         epochs (int): Number of epochs of interaction (equivalent to
@@ -151,7 +151,7 @@ def vpg(env_fn,
 
         vf_lr (float): Learning rate for value function optimizer.
 
-        train_v_iters (int): Number of gradient descent steps to take on 
+        train_v_iters (int): Number of gradient descent steps to take on
             value function per epoch.
 
         lam (float): Lambda for GAE-Lambda. (Always between 0 and 1,
@@ -238,7 +238,7 @@ def vpg(env_fn,
 
         # Perform VPG update!
         actor_critic.train()
-        
+
         # Training policy
         _, logp, _ = actor_critic.policy(x, a)
         ent = torch.mean(-logp) # a sample estimate for entropy
@@ -251,7 +251,7 @@ def vpg(env_fn,
         pi_loss.backward()
         average_gradients(train_pi.param_groups)
         train_pi.step()
-        
+
         # Value function learning
         v = actor_critic.value_function(x)
         v_l_old = torch.mean((ret - v)**2)

@@ -12,14 +12,14 @@ def discount_cumsum(x, discount):
     """
     magic from rllab for computing discounted cumulative sums of vectors.
 
-    input: 
-        vector x, 
-        [x0, 
-         x1, 
+    input:
+        vector x,
+        [x0,
+         x1,
          x2]
 
     output:
-        [x0 + discount * x1 + discount^2 * x2,  
+        [x0 + discount * x1 + discount^2 * x2,
          x1 + discount * x2,
          x2]
     """
@@ -32,23 +32,23 @@ def count_vars(module):
 class MLP(nn.Module):
     def __init__(self, in_features,
                  hidden_sizes=(32,),
-                 activation=nn.Tanh, 
+                 activation=nn.Tanh,
                  output_activation=None):
         super(MLP, self).__init__()
-        
+
         # first layer
         modules = nn.ModuleList([
             nn.Linear(in_features, out_features=hidden_sizes[0]),
             activation()
             ])
-        
+
         # hidden
         for i, h in enumerate(hidden_sizes[1:-1]):
             modules.append(nn.Linear(
                 in_features=hidden_sizes[i],
                 out_features=h))
             modules.append(activation())
-        
+
         # last
         modules.append(
             nn.Linear(in_features=hidden_sizes[-2],
@@ -69,7 +69,7 @@ class CategoricalPolicy(nn.Module):
                  output_activation,
                  action_space):
         super(CategoricalPolicy, self).__init__()
-        
+
         self.act_dim = action_space.n
 
         self.logits = MLP(in_features,
@@ -82,7 +82,7 @@ class CategoricalPolicy(nn.Module):
 
         pi = policy.sample()
         logp_pi = policy.log_prob(pi)
-        
+
         if a is not None:
             logp = policy.log_prob(a)
         else:
@@ -104,9 +104,9 @@ class GaussianPolicy(nn.Module):
                       hidden_sizes=list(hidden_sizes)+[self.act_dim],
                       activation=activation,
                       output_activation=output_activation)
-        
+
         self.log_std = nn.Parameter(-0.5*torch.ones(self.act_dim, dtype=torch.float32))
-        
+
     def forward(self, x, a=None):
         mu = self.mu(x)
         std = torch.exp(self.log_std)
@@ -114,12 +114,12 @@ class GaussianPolicy(nn.Module):
 
         pi = policy.sample()
         logp_pi = torch.sum(policy.log_prob(pi), dim=1)
-        
+
         if a is not None:
             logp = torch.sum(policy.log_prob(a), dim=1)
         else:
             logp = None
-        
+
         return pi, logp, logp_pi
 
 
@@ -149,11 +149,11 @@ class ActorCritic(nn.Module):
                                  activation,
                                  output_activation,
                                  action_space)
-        
-        self.value_function = MLP(in_features, 
+
+        self.value_function = MLP(in_features,
                                   list(hidden_sizes)+[1],
                                   activation)
-    
+
     def forward(self, x, a=None):
         pi, logp, logp_pi = self.policy(x, a)
 

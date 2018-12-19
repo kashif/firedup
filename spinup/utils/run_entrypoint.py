@@ -9,4 +9,3 @@ if __name__ == '__main__':
     args = parser.parse_args()
     thunk = pickle.loads(zlib.decompress(base64.b64decode(args.encoded_thunk)))
     thunk()
-    

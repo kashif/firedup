@@ -22,23 +22,23 @@ def clip_but_pass_gradient(x, l=-1., u=1.):
 class MLP(nn.Module):
     def __init__(self, in_features,
                  hidden_sizes=(32,),
-                 activation=nn.Tanh, 
+                 activation=nn.Tanh,
                  output_activation=None):
         super(MLP, self).__init__()
-        
+
         # first layer
         modules = nn.ModuleList([
             nn.Linear(in_features, out_features=hidden_sizes[0]),
             activation()
             ])
-        
+
         # hidden
         for i, h in enumerate(hidden_sizes[1:-1]):
             modules.append(nn.Linear(
                 in_features=hidden_sizes[i],
                 out_features=h))
             modules.append(activation())
-        
+
         # last
         modules.append(
             nn.Linear(in_features=hidden_sizes[-2],
@@ -65,7 +65,7 @@ class GaussianPolicy(nn.Module):
                       hidden_sizes=list(hidden_sizes),
                       activation=activation,
                       output_activation=activation)
-        
+
         modules = [nn.Linear(in_features=list(hidden_sizes)[-1],
                              out_features=self.act_dim)]
         if output_activation is not None:
@@ -82,9 +82,9 @@ class GaussianPolicy(nn.Module):
         net could produce extremely large values for the log_stds, which
         would result in some actions being either entirely deterministic
         or too random to come back to earth. Either of these introduces
-        numerical instability which could break the algorithm. To 
-        protect against that, we'll constrain the output range of the 
-        log_stds, to lie within [LOG_STD_MIN, LOG_STD_MAX]. This is 
+        numerical instability which could break the algorithm. To
+        protect against that, we'll constrain the output range of the
+        log_stds, to lie within [LOG_STD_MIN, LOG_STD_MAX]. This is
         slightly different from the trick used by the original authors of
         SAC---they used torch.clamp instead of squashing and rescaling.
         I prefer this approach because it allows gradient propagation
@@ -94,7 +94,7 @@ class GaussianPolicy(nn.Module):
         self.log_std = nn.Sequential(nn.Linear(in_features=list(hidden_sizes)[-1],
                                                 out_features=self.act_dim),
                                      nn.Tanh())
-        
+
     def forward(self, x):
         output = self.net(x)
         mu = self.mu(output)
@@ -104,7 +104,7 @@ class GaussianPolicy(nn.Module):
         policy = Normal(mu, scale=torch.exp(log_std))
         pi = policy.sample()
         logp_pi = torch.sum(policy.log_prob(pi), dim=1)
-        
+
         return mu, pi, logp_pi
 
 
@@ -124,8 +124,8 @@ class ActorCritic(nn.Module):
                              activation,
                              output_activation,
                              action_space)
-        
-        self.vf_mlp = MLP(in_features, 
+
+        self.vf_mlp = MLP(in_features,
                           list(hidden_sizes)+[1],
                           activation)
 
@@ -136,7 +136,7 @@ class ActorCritic(nn.Module):
         self.q2 = MLP(in_features+act_dim,
                       list(hidden_sizes)+[1],
                       activation)
-    
+
     def _apply_squashing_func(self, mu, pi, logp_pi):
         mu = torch.tanh(mu)
         pi = torch.tanh(pi)
@@ -145,7 +145,7 @@ class ActorCritic(nn.Module):
         logp_pi -= torch.sum(torch.log(clip_but_pass_gradient(1 - pi**2, l=0, u=1) + 1e-6), dim=1)
 
         return mu, pi, logp_pi
-    
+
     def forward(self, x, a):
         mu, pi, logp_pi = self.policy(x)
         mu, pi, logp_pi = self._apply_squashing_func(mu, pi, logp_pi)
