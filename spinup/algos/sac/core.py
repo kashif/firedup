@@ -61,6 +61,8 @@ class GaussianPolicy(nn.Module):
         super(GaussianPolicy, self).__init__()
 
         self.act_dim = action_space.shape[0]
+        self.action_scale = action_space.high[0]
+
         self.net = MLP(in_features,
                       hidden_sizes=list(hidden_sizes),
                       activation=activation,
@@ -105,8 +107,22 @@ class GaussianPolicy(nn.Module):
         pi = policy.sample()
         logp_pi = torch.sum(policy.log_prob(pi), dim=1)
 
+        mu, pi, logp_pi = self._apply_squashing_func(mu, pi, logp_pi)
+
+        # make sure actions are in correct range
+        mu *= self.action_scale
+        pi *= self.action_scale
+
         return mu, pi, logp_pi
 
+    def _apply_squashing_func(self, mu, pi, logp_pi):
+        mu = torch.tanh(mu)
+        pi = torch.tanh(pi)
+
+        # To avoid evil machine precision error, strictly clip 1-pi**2 to [0,1] range.
+        logp_pi -= torch.sum(torch.log(clip_but_pass_gradient(1 - pi**2, l=0, u=1) + 1e-6), dim=1)
+
+        return mu, pi, logp_pi
 
 class ActorCritic(nn.Module):
     def __init__(self, in_features, action_space,
@@ -116,7 +132,6 @@ class ActorCritic(nn.Module):
                  policy=GaussianPolicy):
         super(ActorCritic, self).__init__()
 
-        self.action_scale = action_space.high[0]
         act_dim = action_space.shape[0]
 
         self.policy = policy(in_features,
@@ -137,22 +152,8 @@ class ActorCritic(nn.Module):
                       list(hidden_sizes)+[1],
                       activation)
 
-    def _apply_squashing_func(self, mu, pi, logp_pi):
-        mu = torch.tanh(mu)
-        pi = torch.tanh(pi)
-
-        # To avoid evil machine precision error, strictly clip 1-pi**2 to [0,1] range.
-        logp_pi -= torch.sum(torch.log(clip_but_pass_gradient(1 - pi**2, l=0, u=1) + 1e-6), dim=1)
-
-        return mu, pi, logp_pi
-
     def forward(self, x, a):
         mu, pi, logp_pi = self.policy(x)
-        mu, pi, logp_pi = self._apply_squashing_func(mu, pi, logp_pi)
-
-        # make sure actions are in correct range
-        mu *= self.action_scale
-        pi *= self.action_scale
 
         q1 = self.q1(torch.cat((x, a), dim=-1))
         q1_pi = self.q1(torch.cat((x, pi), dim=-1))
