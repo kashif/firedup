@@ -28,7 +28,7 @@ class MLP(nn.Module):
         if self.output_activation is None:
             return self.layers[-1](x)
         else:
-            return  self.output_activation(self.layers[-1](x))
+            return self.output_activation(self.layers[-1](x))
 
 
 class CategoricalPolicy(nn.Module):
@@ -59,7 +59,7 @@ class GaussianPolicy(nn.Module):
                  output_activation, action_dim):
         super(GaussianPolicy, self).__init__()
 
-        self.mu = MLP(layers=[in_features]+list(hidden_sizes)+[actaction_dim_dim],
+        self.mu = MLP(layers=[in_features]+list(hidden_sizes)+[action_dim],
                       activation=activation,
                       output_activation=output_activation)
         self.log_std = nn.Parameter(-0.5*torch.ones(action_dim, dtype=torch.float32))
