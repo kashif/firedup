@@ -1,6 +1,6 @@
 from spinup.utils.run_utils import ExperimentGrid
 from spinup import vpg
-import torch.nn as nn
+import torch
 
 if __name__ == '__main__':
     import argparse
@@ -15,5 +15,5 @@ if __name__ == '__main__':
     eg.add('epochs', 10)
     eg.add('steps_per_epoch', 4000)
     eg.add('ac_kwargs:hidden_sizes', [(32,), (64,64)], 'hid')
-    eg.add('ac_kwargs:activation', [nn.Tanh, nn.ReLU], '')
+    eg.add('ac_kwargs:activation', [torch.tanh, torch.relu], '')
     eg.run(vpg, num_cpu=args.cpu)
