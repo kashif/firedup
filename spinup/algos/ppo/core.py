@@ -20,6 +20,7 @@ class MLP(nn.Module):
         for i, layer in enumerate(layers[1:]):
             self.layers.append(nn.Linear(layers[i], layer))
             nn.init.zeros_(self.layers[i].bias)
+            nn.init.xavier_uniform_(self.layers[i].weight)
 
     def forward(self, input):
         x = input
