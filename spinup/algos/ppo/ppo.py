@@ -2,6 +2,7 @@ import numpy as np
 import torch
 import gym
 import time
+import scipy.signal
 import spinup.algos.ppo.core as core
 from spinup.utils.logx import EpochLogger
 from spinup.utils.mpi_torch import average_gradients, sync_all_params
@@ -14,11 +15,6 @@ class PPOBuffer:
     with the environment, and using Generalized Advantage Estimation (GAE-Lambda)
     for calculating the advantages of state-action pairs.
     """
-
-    def _combined_shape(self, length, shape=None):
-        if shape is None:
-            return (length,)
-        return (length, shape) if np.isscalar(shape) else (length, *shape)
 
     def __init__(self, obs_dim, act_dim, size, gamma=0.99, lam=0.95):
         self.obs_buf = np.zeros(self._combined_shape(size, obs_dim), dtype=np.float32)
@@ -65,10 +61,10 @@ class PPOBuffer:
 
         # the next two lines implement GAE-Lambda advantage calculation
         deltas = rews[:-1] + self.gamma * vals[1:] - vals[:-1]
-        self.adv_buf[path_slice] = core.discount_cumsum(deltas, self.gamma * self.lam)
+        self.adv_buf[path_slice] = self._discount_cumsum(deltas, self.gamma * self.lam)
 
         # the next line computes rewards-to-go, to be targets for the value function
-        self.ret_buf[path_slice] = core.discount_cumsum(rews, self.gamma)[:-1]
+        self.ret_buf[path_slice] = self._discount_cumsum(rews, self.gamma)[:-1]
 
         self.path_start_idx = self.ptr
 
@@ -86,6 +82,27 @@ class PPOBuffer:
         return [self.obs_buf, self.act_buf, self.adv_buf,
                 self.ret_buf, self.logp_buf]
 
+    def _combined_shape(self, length, shape=None):
+        if shape is None:
+            return (length,)
+        return (length, shape) if np.isscalar(shape) else (length, *shape)
+
+    def _discount_cumsum(self, x, discount):
+        """
+        magic from rllab for computing discounted cumulative sums of vectors.
+
+        input:
+            vector x,
+            [x0,
+            x1,
+            x2]
+
+        output:
+            [x0 + discount * x1 + discount^2 * x2,
+            x1 + discount * x2,
+            x2]
+        """
+        return scipy.signal.lfilter([1], [1, float(-discount)], x[::-1], axis=0)[::-1]
 
 """
 

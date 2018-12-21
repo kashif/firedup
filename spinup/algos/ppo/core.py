@@ -1,65 +1,34 @@
 import numpy as np
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 from torch.distributions.categorical import Categorical
 from torch.distributions.normal import Normal
-import scipy.signal
 from gym.spaces import Box, Discrete
 
-
-def discount_cumsum(x, discount):
-    """
-    magic from rllab for computing discounted cumulative sums of vectors.
-
-    input:
-        vector x,
-        [x0,
-         x1,
-         x2]
-
-    output:
-        [x0 + discount * x1 + discount^2 * x2,
-         x1 + discount * x2,
-         x2]
-    """
-    return scipy.signal.lfilter([1], [1, float(-discount)], x[::-1], axis=0)[::-1]
 
 def count_vars(module):
     return sum(p.numel() for p in module.parameters() if p.requires_grad)
 
 
 class MLP(nn.Module):
-    def __init__(self, in_features,
-                 hidden_sizes=(32,),
-                 activation=nn.Tanh,
-                 output_activation=None):
+    def __init__(self, layers, activation=torch.tanh, output_activation=None):
         super(MLP, self).__init__()
+        self.layers = nn.ModuleList()
+        self.activation = activation
+        self.output_activation = output_activation
 
-        # first layer
-        modules = nn.ModuleList([
-            nn.Linear(in_features, out_features=hidden_sizes[0]),
-            activation()
-            ])
+        for i, layer in enumerate(layers[1:]):
+            self.layers.append(nn.Linear(layers[i], layer))
+            nn.init.zeros_(self.layers[i].bias)
 
-        # hidden
-        for i, h in enumerate(hidden_sizes[1:-1]):
-            modules.append(nn.Linear(
-                in_features=hidden_sizes[i],
-                out_features=h))
-            modules.append(activation())
-
-        # last
-        modules.append(
-            nn.Linear(in_features=hidden_sizes[-2],
-                      out_features=hidden_sizes[-1]))
-        if output_activation is not None:
-            modules.append(output_activation())
-
-        self.layers = nn.Sequential(*modules)
-
-    def forward(self, x):
-        return self.layers(x)
+    def forward(self, input):
+        x = input
+        for layer in self.layers[:-1]:
+            x = self.activation(layer(x))
+        if self.output_activation is None:
+            return self.layers[-1](x)
+        else:
+            return self.output_activation(self.layers[-1](x))
 
 
 class CategoricalPolicy(nn.Module):
@@ -67,13 +36,10 @@ class CategoricalPolicy(nn.Module):
                  hidden_sizes,
                  activation,
                  output_activation,
-                 action_space):
+                 action_dim):
         super(CategoricalPolicy, self).__init__()
 
-        self.act_dim = action_space.n
-
-        self.logits = MLP(in_features,
-                          hidden_sizes=list(hidden_sizes)+[self.act_dim],
+        self.logits = MLP(layers=[in_features]+list(hidden_sizes)+[action_dim],
                           activation=activation)
 
     def forward(self, x, a=None):
@@ -96,16 +62,14 @@ class GaussianPolicy(nn.Module):
                  hidden_sizes,
                  activation,
                  output_activation,
-                 action_space):
+                 action_dim):
         super(GaussianPolicy, self).__init__()
 
-        self.act_dim = action_space.shape[0]
-        self.mu = MLP(in_features,
-                      hidden_sizes=list(hidden_sizes)+[self.act_dim],
+        self.mu = MLP(layers=[in_features]+list(hidden_sizes)+[action_dim],
                       activation=activation,
                       output_activation=output_activation)
 
-        self.log_std = nn.Parameter(-0.5*torch.ones(self.act_dim, dtype=torch.float32))
+        self.log_std = nn.Parameter(-0.5*torch.ones(action_dim, dtype=torch.float32))
 
     def forward(self, x, a=None):
         mu = self.mu(x)
@@ -126,7 +90,7 @@ class GaussianPolicy(nn.Module):
 class ActorCritic(nn.Module):
     def __init__(self, in_features, action_space,
                  hidden_sizes=(64, 64),
-                 activation=nn.Tanh,
+                 activation=torch.tanh,
                  output_activation=None,
                  policy=None):
         super(ActorCritic, self).__init__()
@@ -136,13 +100,13 @@ class ActorCritic(nn.Module):
                                          hidden_sizes,
                                          activation,
                                          output_activation,
-                                         action_space)
+                                         action_space.shape[0])
         elif policy is None and isinstance(action_space, Discrete):
             self.policy = CategoricalPolicy(in_features,
                                             hidden_sizes,
                                             activation,
                                             output_activation,
-                                            action_space)
+                                            action_space.n)
         else:
             self.policy = policy(in_features,
                                  hidden_sizes,
@@ -150,9 +114,8 @@ class ActorCritic(nn.Module):
                                  output_activation,
                                  action_space)
 
-        self.value_function = MLP(in_features,
-                                  list(hidden_sizes)+[1],
-                                  activation)
+        self.value_function = MLP(layers=[in_features]+list(hidden_sizes)+[1],
+                                  activation=activation)
 
     def forward(self, x, a=None):
         pi, logp, logp_pi = self.policy(x, a)

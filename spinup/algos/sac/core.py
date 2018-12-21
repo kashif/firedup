@@ -1,7 +1,6 @@
 import numpy as np
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 from torch.distributions.categorical import Categorical
 from torch.distributions.normal import Normal
 from gym.spaces import Box, Discrete
@@ -13,43 +12,26 @@ LOG_STD_MIN = -20
 def count_vars(module):
     return sum(p.numel() for p in module.parameters() if p.requires_grad)
 
-def clip_but_pass_gradient(x, l=-1., u=1.):
-    clip_up = (x > u).float()
-    clip_low = (x < l).float()
-    return x + ((u - x)*clip_up + (l - x)*clip_low).detach()
-
 
 class MLP(nn.Module):
-    def __init__(self, in_features,
-                 hidden_sizes=(32,),
-                 activation=nn.Tanh,
-                 output_activation=None):
+    def __init__(self, layers, activation=torch.tanh, output_activation=None):
         super(MLP, self).__init__()
+        self.layers = nn.ModuleList()
+        self.activation = activation
+        self.output_activation = output_activation
 
-        # first layer
-        modules = nn.ModuleList([
-            nn.Linear(in_features, out_features=hidden_sizes[0]),
-            activation()
-            ])
+        for i, layer in enumerate(layers[1:]):
+            self.layers.append(nn.Linear(layers[i], layer))
+            nn.init.zeros_(self.layers[i].bias)
 
-        # hidden
-        for i, h in enumerate(hidden_sizes[1:-1]):
-            modules.append(nn.Linear(
-                in_features=hidden_sizes[i],
-                out_features=h))
-            modules.append(activation())
-
-        # last
-        modules.append(
-            nn.Linear(in_features=hidden_sizes[-2],
-                      out_features=hidden_sizes[-1]))
-        if output_activation is not None:
-            modules.append(output_activation())
-
-        self.layers = nn.Sequential(*modules)
-
-    def forward(self, x):
-        return self.layers(x)
+    def forward(self, input):
+        x = input
+        for layer in self.layers[:-1]:
+            x = self.activation(layer(x))
+        if self.output_activation is None:
+            return self.layers[-1](x)
+        else:
+            return self.output_activation(self.layers[-1](x))
 
 
 class GaussianPolicy(nn.Module):
@@ -60,16 +42,15 @@ class GaussianPolicy(nn.Module):
                  action_space):
         super(GaussianPolicy, self).__init__()
 
-        self.act_dim = action_space.shape[0]
+        action_dim = action_space.shape[0]
         self.action_scale = action_space.high[0]
 
-        self.net = MLP(in_features,
-                      hidden_sizes=list(hidden_sizes),
+        self.net = MLP(layers=[in_features]+list(hidden_sizes),
                       activation=activation,
                       output_activation=activation)
 
         modules = [nn.Linear(in_features=list(hidden_sizes)[-1],
-                             out_features=self.act_dim)]
+                             out_features=action_dim)]
         if output_activation is not None:
             modules.append(output_activation())
         self.mu = nn.Sequential(*modules)
@@ -94,7 +75,7 @@ class GaussianPolicy(nn.Module):
         it makes much of a difference.
         """
         self.log_std = nn.Sequential(nn.Linear(in_features=list(hidden_sizes)[-1],
-                                                out_features=self.act_dim),
+                                                out_features=action_dim),
                                      nn.Tanh())
 
     def forward(self, x):
@@ -115,24 +96,30 @@ class GaussianPolicy(nn.Module):
 
         return mu, pi, logp_pi
 
+    def _clip_but_pass_gradient(self, x, l=-1., u=1.):
+        clip_up = (x > u).float()
+        clip_low = (x < l).float()
+        return x + ((u - x)*clip_up + (l - x)*clip_low).detach()
+
     def _apply_squashing_func(self, mu, pi, logp_pi):
         mu = torch.tanh(mu)
         pi = torch.tanh(pi)
 
         # To avoid evil machine precision error, strictly clip 1-pi**2 to [0,1] range.
-        logp_pi -= torch.sum(torch.log(clip_but_pass_gradient(1 - pi**2, l=0, u=1) + 1e-6), dim=1)
+        logp_pi -= torch.sum(
+            torch.log(self._clip_but_pass_gradient(1 - pi**2, l=0, u=1) + 1e-6), dim=1)
 
         return mu, pi, logp_pi
 
 class ActorCritic(nn.Module):
     def __init__(self, in_features, action_space,
                  hidden_sizes=(400, 300),
-                 activation=nn.ReLU,
+                 activation=torch.relu,
                  output_activation=None,
                  policy=GaussianPolicy):
         super(ActorCritic, self).__init__()
 
-        act_dim = action_space.shape[0]
+        action_dim = action_space.shape[0]
 
         self.policy = policy(in_features,
                              hidden_sizes,
@@ -140,16 +127,13 @@ class ActorCritic(nn.Module):
                              output_activation,
                              action_space)
 
-        self.vf_mlp = MLP(in_features,
-                          list(hidden_sizes)+[1],
+        self.vf_mlp = MLP([in_features]+list(hidden_sizes)+[1],
                           activation)
 
-        self.q1 = MLP(in_features+act_dim,
-                      list(hidden_sizes)+[1],
+        self.q1 = MLP([in_features+action_dim]+list(hidden_sizes)+[1],
                       activation)
 
-        self.q2 = MLP(in_features+act_dim,
-                      list(hidden_sizes)+[1],
+        self.q2 = MLP([in_features+action_dim]+list(hidden_sizes)+[1],
                       activation)
 
     def forward(self, x, a):
