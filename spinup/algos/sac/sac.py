@@ -158,7 +158,6 @@ def sac(env_fn,
 
     # Target value network
     target = actor_critic(in_features=obs_dim, **ac_kwargs)
-    target.eval()
 
     # Experience buffer
     replay_buffer = ReplayBuffer(obs_dim=obs_dim, act_dim=act_dim, size=replay_size)
@@ -181,11 +180,10 @@ def sac(env_fn,
     target.vf_mlp.load_state_dict(main.vf_mlp.state_dict())
 
     def get_action(o, deterministic=False):
-        mu, pi, _ = main.policy(torch.Tensor(o.reshape(1,-1)))
+        pi, mu, _ = main.policy(torch.Tensor(o.reshape(1,-1)))
         return mu.data.numpy()[0] if deterministic else pi.data.numpy()[0]
 
     def test_agent(n=10):
-        main.eval()
         for _ in range(n):
             o, r, d, ep_ret, ep_len = test_env.reset(), 0, False, 0, 0
             while not(d or (ep_len == max_ep_len)):
@@ -201,7 +199,6 @@ def sac(env_fn,
 
     # Main loop: collect experience in env and update/log each epoch
     for t in range(total_steps):
-        main.eval()
         """
         Until start_steps have elapsed, randomly sample actions
         from a uniform distribution for better exploration. Afterwards,
@@ -235,26 +232,25 @@ def sac(env_fn,
             This is a slight difference from the SAC specified in the
             original paper.
             """
-            main.train()
             for _ in range(ep_len):
                 batch = replay_buffer.sample_batch(batch_size)
-                (x, x2, a, r, d) = (torch.Tensor(batch['obs1']),
+                (obs1, obs2, acts, rews, done) = (torch.Tensor(batch['obs1']),
                                     torch.Tensor(batch['obs2']),
                                     torch.Tensor(batch['acts']),
                                     torch.Tensor(batch['rews']),
                                     torch.Tensor(batch['done']))
-                _, _, logp_pi, q1, q2, q1_pi, q2_pi, v = main(x, a)
-                v_targ = target.vf_mlp(x2)
+                _, _, logp_pi, q1, q2, q1_pi, q2_pi, v = main(obs1, acts)
+                v_targ = target.vf_mlp(obs2)
 
                 # Min Double-Q:
                 min_q_pi = torch.min(q1_pi, q2_pi)
 
                 # Targets for Q and V regression
-                q_backup = (r + gamma*(1 - d)*v_targ).detach()
+                q_backup = (rews + gamma * (1 - done) * v_targ).detach()
                 v_backup = (min_q_pi - alpha * logp_pi).detach()
 
                 # Soft actor-critic losses
-                pi_loss = torch.mean(alpha * logp_pi - q1_pi)
+                pi_loss = torch.mean(alpha * logp_pi - min_q_pi)
                 q1_loss = 0.5 * torch.mean((q_backup - q1)**2)
                 q2_loss = 0.5 * torch.mean((q_backup - q2)**2)
                 v_loss = 0.5 * torch.mean((v_backup - v)**2)
@@ -271,8 +267,8 @@ def sac(env_fn,
                 value_optimizer.step()
 
                 # Polyak averaging for target variables
-                for v_main, v_target in zip(main.vf_mlp.parameters(), target.vf_mlp.parameters()):
-                    v_target.data.copy_(polyak*v_target.data + (1 - polyak)*v_main.data)
+                for p_main, p_target in zip(main.vf_mlp.parameters(), target.vf_mlp.parameters()):
+                    p_target.data.copy_(polyak*p_target.data + (1 - polyak)*p_main.data)
 
                 logger.store(LossPi=pi_loss.item(), LossQ1=q1_loss.item(),
                              LossQ2=q2_loss.item(), LossV=v_loss.item(),
