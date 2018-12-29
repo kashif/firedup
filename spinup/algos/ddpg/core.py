@@ -10,12 +10,13 @@ def count_vars(module):
 
 class MLP(nn.Module):
     def __init__(self, layers, activation=torch.tanh, output_activation=None,
-                 output_scale=1):
+                 output_scale=1, output_squeeze=False):
         super(MLP, self).__init__()
         self.layers = nn.ModuleList()
         self.activation = activation
         self.output_activation = output_activation
         self.output_scale = output_scale
+        self.output_squeeze = output_squeeze
 
         gain = nn.init.calculate_gain(activation.__name__)
         for i, layer in enumerate(layers[1:]):
@@ -28,10 +29,10 @@ class MLP(nn.Module):
         for layer in self.layers[:-1]:
             x = self.activation(layer(x))
         if self.output_activation is None:
-            x = self.layers[-1](x)
+            x = self.layers[-1](x) * self.output_scale
         else:
-            x = self.output_activation(self.layers[-1](x))
-        return self.output_scale * x
+            x = self.output_activation(self.layers[-1](x)) * self.output_scale
+        return torch.squeeze(x) if self.output_squeeze else x
 
 class ActorCritic(nn.Module):
     def __init__(self, in_features, action_space,
