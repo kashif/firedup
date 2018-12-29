@@ -9,11 +9,14 @@ def count_vars(module):
 
 
 class MLP(nn.Module):
-    def __init__(self, layers, activation=torch.tanh, output_activation=None):
+    def __init__(self, layers, activation=torch.tanh, output_activation=None,
+                 output_scale=1, output_squeeze=False):
         super(MLP, self).__init__()
         self.layers = nn.ModuleList()
         self.activation = activation
         self.output_activation = output_activation
+        self.output_scale = output_scale
+        self.output_squeeze = output_squeeze
 
         gain = nn.init.calculate_gain(activation.__name__)
         for i, layer in enumerate(layers[1:]):
@@ -26,9 +29,10 @@ class MLP(nn.Module):
         for layer in self.layers[:-1]:
             x = self.activation(layer(x))
         if self.output_activation is None:
-            return self.layers[-1](x)
+            x = self.layers[-1](x) * self.output_scale
         else:
-            return self.output_activation(self.layers[-1](x))
+            x = self.output_activation(self.layers[-1](x)) * self.output_scale
+        return torch.squeeze(x) if self.output_squeeze else x
 
 
 class ActorCritic(nn.Module):
@@ -39,17 +43,18 @@ class ActorCritic(nn.Module):
         super(ActorCritic, self).__init__()
 
         action_dim = action_space.shape[0]
-        self.action_scale = action_space.high[0]
+        action_scale = action_space.high[0]
 
         self.policy = MLP(layers=[in_features]+list(hidden_sizes)+[action_dim],
-                          activation=activation, output_activation=output_activation)
+                          activation=activation, output_activation=output_activation,
+                          output_scale=action_scale)
         self.q1 = MLP(layers=[in_features+action_dim]+list(hidden_sizes)+[1],
-                      activation=activation)
+                      activation=activation, output_squeeze=True)
         self.q2 = MLP(layers=[in_features+action_dim]+list(hidden_sizes)+[1],
-                      activation=activation)
+                      activation=activation, output_squeeze=True)
 
     def forward(self, x, a):
-        pi = self.action_scale * self.policy(x)
+        pi = self.policy(x)
 
         q1 = self.q1(torch.cat((x, a), dim=1))
         q2 = self.q2(torch.cat((x, a), dim=1))

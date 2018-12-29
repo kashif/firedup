@@ -167,8 +167,7 @@ def td3(env_fn, actor_critic=core.ActorCritic, ac_kwargs=dict(), seed=0,
 
     def get_action(o, noise_scale):
         pi = main.policy(torch.Tensor(o.reshape(1,-1)))
-        a = act_limit * pi.data.numpy()[0]
-        a += noise_scale * np.random.randn(act_dim)
+        a = pi.data.numpy()[0] + noise_scale * np.random.randn(act_dim)
         return np.clip(a, -act_limit, act_limit)
 
     def test_agent(n=10):
@@ -229,7 +228,7 @@ def td3(env_fn, actor_critic=core.ActorCritic, ac_kwargs=dict(), seed=0,
                                     torch.Tensor(batch['rews']),
                                     torch.Tensor(batch['done']))
                 _, q1, q2, _ = main(obs1, acts)
-                pi_targ = act_limit * target.policy(obs2)
+                pi_targ = target.policy(obs2)
 
                  # Target policy smoothing, by adding clipped noise to target actions
                 epsilon = torch.normal(torch.zeros_like(pi_targ),
