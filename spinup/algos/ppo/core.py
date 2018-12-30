@@ -31,7 +31,7 @@ class MLP(nn.Module):
             x = self.layers[-1](x)
         else:
             x = self.output_activation(self.layers[-1](x))
-        return torch.squeeze(x) if self.output_squeeze else x
+        return x.squeeze() if self.output_squeeze else x
 
 
 class CategoricalPolicy(nn.Module):
@@ -45,12 +45,10 @@ class CategoricalPolicy(nn.Module):
     def forward(self, x, a=None):
         logits = self.logits(x)
         policy = Categorical(logits=logits)
-
         pi = policy.sample()
-        logp_pi = torch.squeeze(policy.log_prob(pi))
-
+        logp_pi = policy.log_prob(pi).squeeze()
         if a is not None:
-            logp = torch.squeeze(policy.log_prob(a))
+            logp = policy.log_prob(a).squeeze()
         else:
             logp = None
 
@@ -63,20 +61,17 @@ class GaussianPolicy(nn.Module):
         super(GaussianPolicy, self).__init__()
 
         self.mu = MLP(layers=[in_features]+list(hidden_sizes)+[action_dim],
-                      activation=activation,
-                      output_activation=output_activation)
+                      activation=activation, output_activation=output_activation)
 
         self.log_std = nn.Parameter(-0.5*torch.ones(action_dim, dtype=torch.float32))
 
     def forward(self, x, a=None):
         mu = self.mu(x)
-        policy = Normal(mu, torch.exp(self.log_std))
-
+        policy = Normal(mu, self.log_std.exp())
         pi = policy.sample()
-        logp_pi = torch.sum(policy.log_prob(pi), dim=1)
-
+        logp_pi = policy.log_prob(pi).sum(dim=1)
         if a is not None:
-            logp = torch.sum(policy.log_prob(a), dim=1)
+            logp = policy.log_prob(a).sum(dim=1)
         else:
             logp = None
 
@@ -85,10 +80,8 @@ class GaussianPolicy(nn.Module):
 
 class ActorCritic(nn.Module):
     def __init__(self, in_features, action_space,
-                 hidden_sizes=(64, 64),
-                 activation=torch.tanh,
-                 output_activation=None,
-                 policy=None):
+                 hidden_sizes=(64, 64), activation=torch.tanh,
+                 output_activation=None, policy=None):
         super(ActorCritic, self).__init__()
 
         if policy is None and isinstance(action_space, Box):
