@@ -62,7 +62,6 @@ class GaussianPolicy(nn.Module):
 
         self.mu = MLP(layers=[in_features]+list(hidden_sizes)+[action_dim],
                       activation=activation, output_activation=output_activation)
-
         self.log_std = nn.Parameter(-0.5*torch.ones(action_dim, dtype=torch.float32))
 
     def forward(self, x, a=None):
@@ -87,15 +86,14 @@ class ActorCritic(nn.Module):
         if policy is None and isinstance(action_space, Box):
             self.policy = GaussianPolicy(in_features, hidden_sizes,
                                          activation, output_activation,
-                                         action_space.shape[0])
+                                         action_dim=action_space.shape[0])
         elif policy is None and isinstance(action_space, Discrete):
             self.policy = CategoricalPolicy(in_features, hidden_sizes,
                                             activation, output_activation,
-                                            action_space.n)
+                                            action_dim=action_space.n)
         else:
-            self.policy = policy(in_features, hidden_sizes,
-                                 activation, output_activation,
-                                 action_space)
+            self.policy = policy(in_features, hidden_sizes, activation,
+                                 output_activation, action_space)
 
         self.value_function = MLP(layers=[in_features]+list(hidden_sizes)+[1],
                                   activation=activation, output_squeeze=True)
