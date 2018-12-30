@@ -1,5 +1,6 @@
 import numpy as np
 import torch
+import torch.nn.functional as F
 import gym
 import time
 import scipy.signal
@@ -217,12 +218,52 @@ def vpg(env_fn,
     # Sync params across processes
     sync_all_params(actor_critic.state_dict())
 
+    def update():
+        obs, act, adv, ret, logp_old = [torch.Tensor(x) for x in buf.get()]
+
+        # Policy gradient step
+        _, logp, _ = actor_critic.policy(obs, act)
+        ent = (-logp).mean() # a sample estimate for entropy
+
+        # VPG policy objective
+        pi_loss = -(logp * adv).mean()
+
+        # Policy gradient step
+        train_pi.zero_grad()
+        pi_loss.backward()
+        average_gradients(train_pi.param_groups)
+        train_pi.step()
+
+        # Value function learning
+        v = actor_critic.value_function(obs)
+        v_l_old = F.mse_loss(v, ret)
+        for _ in range(train_v_iters):
+            # Output from value function graph
+            v = actor_critic.value_function(obs)
+            # VPG value objective
+            v_loss = F.mse_loss(v, ret)
+
+            # Value function gradient step
+            train_v.zero_grad()
+            v_loss.backward()
+            average_gradients(train_v.param_groups)
+            train_v.step()
+
+        # Log changes from update
+        _, logp, _, v = actor_critic(obs, act)
+        pi_l_new = -(logp * adv).mean()
+        v_l_new = F.mse_loss(v, ret)
+        kl = (logp_old - logp).mean() # a sample estimate for KL-divergence
+        logger.store(LossPi=pi_loss, LossV=v_l_old,
+                     KL=kl, Entropy=ent,
+                     DeltaLossPi=(pi_l_new - pi_loss),
+                     DeltaLossV=(v_l_new - v_l_old))
+
     start_time = time.time()
     o, r, d, ep_ret, ep_len = env.reset(), 0, False, 0, 0
 
     # Main loop: collect experience in env and update/log each epoch
     for epoch in range(epochs):
-
         actor_critic.eval()
         for t in range(local_steps_per_epoch):
             a, _, logp_t, v_t = actor_critic(torch.Tensor(o.reshape(1,-1)))
@@ -251,49 +292,9 @@ def vpg(env_fn,
         if (epoch % save_freq == 0) or (epoch == epochs-1):
             logger.save_state({'env': env}, actor_critic, None)
 
-        # Inputs
-        x, a, adv, ret, logp_old = [torch.Tensor(x) for x in buf.get()]
-
         # Perform VPG update!
         actor_critic.train()
-
-        # Training policy
-        _, logp, _ = actor_critic.policy(x, a)
-        ent = torch.mean(-logp) # a sample estimate for entropy
-
-        # VPG policy objective
-        pi_loss = -torch.mean(logp * adv)
-
-        # Policy gradient step
-        train_pi.zero_grad()
-        pi_loss.backward()
-        average_gradients(train_pi.param_groups)
-        train_pi.step()
-
-        # Value function learning
-        v = actor_critic.value_function(x)
-        v_l_old = torch.mean((ret - v)**2)
-        for _ in range(train_v_iters):
-            # Output from value function graph
-            v = actor_critic.value_function(x)
-            # VPG policy objective
-            v_loss = torch.mean((ret - v)**2)
-
-            # Value function gradient step
-            train_v.zero_grad()
-            v_loss.backward()
-            average_gradients(train_v.param_groups)
-            train_v.step()
-
-        # Log changes from update
-        _, logp, _, v = actor_critic(x, a)
-        pi_l_new = -torch.mean(logp * adv)
-        v_l_new = torch.mean((ret - v)**2)
-        kl = torch.mean(logp_old - logp) # a sample estimate for KL-divergence
-        logger.store(LossPi=pi_loss, LossV=v_l_old,
-                     KL=kl, Entropy=ent,
-                     DeltaLossPi=(pi_l_new - pi_loss),
-                     DeltaLossV=(v_l_new - v_l_old))
+        update()
 
         # Log info about epoch
         logger.log_tabular('Epoch', epoch)
