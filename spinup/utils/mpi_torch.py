@@ -12,10 +12,10 @@ def sync_all_params(params, root=0):
     for _, p in params:
         data = p.data.numpy()
         broadcast(data, root)
-        p.data = torch.Tensor(data)
+        p.data.copy_(torch.Tensor(data))
 
 def average_gradients(param_groups):
     for param_group in param_groups:
         for p in param_group['params']:
             if p.requires_grad:
-                p.grad.data = torch.Tensor(mpi_avg(p.grad.data.numpy()))
+                p.grad.data.copy_(torch.Tensor(mpi_avg(p.grad.data.numpy())))
