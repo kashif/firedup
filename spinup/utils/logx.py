@@ -132,14 +132,14 @@ class Logger:
             with open(osp.join(self.output_dir, "config.json"), 'w') as out:
                 out.write(output)
 
-    def save_state(self, state_dict, policy, itr=None):
+    def save_state(self, state_dict, model, itr=None):
         """
         Saves the state of an experiment.
 
         To be clear: this is about saving *state*, not logging diagnostics.
         All diagnostic logging is separate from this function. This function
         will save whatever is in ``state_dict``---usually just a copy of the
-        environment---and the most recent copy of the model via ``policy``.
+        environment---and the most recent copy of the model via ``model``.
 
         Call with any frequency you prefer. If you only want to maintain a
         single state and overwrite it at each call with the most recent
@@ -149,7 +149,7 @@ class Logger:
         Args:
             state_dict (dict): Dictionary containing essential elements to
                 describe the current state of training.
-            policy (nn.Module): A policy.
+            model (nn.Module): A model which contains the policy.
             itr: An int, or None. Current iteration of training.
         """
         if proc_id()==0:
@@ -158,12 +158,12 @@ class Logger:
                 joblib.dump(state_dict, osp.join(self.output_dir, fname))
             except:
                 self.log('Warning: could not pickle state_dict.', color='red')
-            self._torch_save(policy, itr)
+            self._torch_save(model, itr)
 
-    def _torch_save(self, policy, itr=None):
+    def _torch_save(self, model, itr=None):
         if proc_id()==0:
             fname = 'torch_save.pt' if itr is None else 'torch_save%d.pt'%itr
-            torch.save(policy, osp.join(self.output_dir, fname))
+            torch.save(model, osp.join(self.output_dir, fname))
 
     def dump_tabular(self):
         """
