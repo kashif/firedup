@@ -1,5 +1,6 @@
 import numpy as np
 import torch
+import torch.nn.functional as F
 import gym
 import time
 from spinup.algos.sac import core
@@ -25,16 +26,18 @@ class ReplayBuffer:
         self.acts_buf[self.ptr] = act
         self.rews_buf[self.ptr] = rew
         self.done_buf[self.ptr] = done
-        self.ptr = (self.ptr+1) % self.max_size
-        self.size = min(self.size+1, self.max_size)
+        self.ptr = (self.ptr + 1) % self.max_size
+        self.size = min(self.size + 1, self.max_size)
 
     def sample_batch(self, batch_size=32):
         idxs = np.random.randint(0, self.size, size=batch_size)
-        return dict(obs1=self.obs1_buf[idxs],
-                    obs2=self.obs2_buf[idxs],
-                    acts=self.acts_buf[idxs],
-                    rews=self.rews_buf[idxs],
-                    done=self.done_buf[idxs])
+        return dict(
+            obs1=self.obs1_buf[idxs],
+            obs2=self.obs2_buf[idxs],
+            acts=self.acts_buf[idxs],
+            rews=self.rews_buf[idxs],
+            done=self.done_buf[idxs])
+
 
 """
 
@@ -43,6 +46,8 @@ Soft Actor-Critic
 (With slight variations that bring it closer to TD3)
 
 """
+
+
 def sac(env_fn,
         actor_critic=core.ActorCritic,
         ac_kwargs=dict(),
@@ -65,28 +70,27 @@ def sac(env_fn,
         env_fn : A function which creates a copy of the environment.
             The environment must satisfy the OpenAI Gym API.
 
-        actor_critic: A function which takes in placeholder symbols
-            for state, ``x_ph``, and action, ``a_ph``, and returns the main
-            outputs from the agent's Tensorflow computation graph:
+        actor_critic: The agent's model which takes the state ``x`` and 
+            action, ``a`` and returns a tuple of:
 
             ===========  ================  ======================================
             Symbol       Shape             Description
             ===========  ================  ======================================
-            ``mu``       (batch, act_dim)  | Computes mean actions from policy
-                                           | given states.
             ``pi``       (batch, act_dim)  | Samples actions from policy given
                                            | states.
+            ``mu``       (batch, act_dim)  | Computes mean actions from policy
+                                           | given states.
             ``logp_pi``  (batch,)          | Gives log probability, according to
                                            | the policy, of the action sampled by
                                            | ``pi``. Critical: must be differentiable
                                            | with respect to policy parameters all
                                            | the way through action sampling.
             ``q1``       (batch,)          | Gives one estimate of Q* for
-                                           | states in ``x_ph`` and actions in
-                                           | ``a_ph``.
+                                           | states in ``x`` and actions in
+                                           | ``a``.
             ``q2``       (batch,)          | Gives another estimate of Q* for
-                                           | states in ``x_ph`` and actions in
-                                           | ``a_ph``.
+                                           | states in ``x`` and actions in
+                                           | ``a``.
             ``q1_pi``    (batch,)          | Gives the composition of ``q1`` and
                                            | ``pi`` for states in ``x_ph``:
                                            | q1(x, pi(x)).
@@ -94,11 +98,11 @@ def sac(env_fn,
                                            | ``pi`` for states in ``x_ph``:
                                            | q2(x, pi(x)).
             ``v``        (batch,)          | Gives the value estimate for states
-                                           | in ``x_ph``.
+                                           | in ``x``.
             ===========  ================  ======================================
 
         ac_kwargs (dict): Any kwargs appropriate for the actor_critic
-            function you provided to SAC.
+            class you provided to SAC.
 
         seed (int): Seed for random number generators.
 
@@ -160,11 +164,13 @@ def sac(env_fn,
     target = actor_critic(in_features=obs_dim, **ac_kwargs)
 
     # Experience buffer
-    replay_buffer = ReplayBuffer(obs_dim=obs_dim, act_dim=act_dim, size=replay_size)
+    replay_buffer = ReplayBuffer(
+        obs_dim=obs_dim, act_dim=act_dim, size=replay_size)
 
     # Count variables
-    var_counts = tuple(core.count_vars(module) for module in
-                       [main.policy, main.q1, main.q2, main.vf_mlp, main])
+    var_counts = tuple(
+        core.count_vars(module)
+        for module in [main.policy, main.q1, main.q2, main.vf_mlp, main])
     print(('\nNumber of parameters: \t pi: %d, \t' + \
            'q1: %d, \t q2: %d, \t v: %d, \t total: %d\n')%var_counts)
 
@@ -173,20 +179,21 @@ def sac(env_fn,
     pi_optimizer = torch.optim.Adam(main.policy.parameters(), lr=lr)
 
     # Value train op
-    value_params = list(main.vf_mlp.parameters()) + list(main.q1.parameters()) + list(main.q2.parameters())
+    value_params = list(main.vf_mlp.parameters()) + list(
+        main.q1.parameters()) + list(main.q2.parameters())
     value_optimizer = torch.optim.Adam(value_params, lr=lr)
 
     # Initializing targets to match main variables
     target.vf_mlp.load_state_dict(main.vf_mlp.state_dict())
 
     def get_action(o, deterministic=False):
-        pi, mu, _ = main.policy(torch.Tensor(o.reshape(1,-1)))
+        pi, mu, _ = main.policy(torch.Tensor(o.reshape(1, -1)))
         return mu.data.numpy()[0] if deterministic else pi.data.numpy()[0]
 
     def test_agent(n=10):
         for _ in range(n):
             o, r, d, ep_ret, ep_len = test_env.reset(), 0, False, 0, 0
-            while not(d or (ep_len == max_ep_len)):
+            while not (d or (ep_len == max_ep_len)):
                 # Take deterministic actions at test time
                 o, r, d, _ = test_env.step(get_action(o, True))
                 ep_ret += r
@@ -217,7 +224,7 @@ def sac(env_fn,
         # Ignore the "done" signal if it comes from hitting the time
         # horizon (that is, when it's an artificial terminal signal
         # that isn't based on the agent's state)
-        d = False if ep_len==max_ep_len else d
+        d = False if ep_len == max_ep_len else d
 
         # Store experience to replay buffer
         replay_buffer.store(o, a, r, o2, d)
@@ -235,10 +242,10 @@ def sac(env_fn,
             for _ in range(ep_len):
                 batch = replay_buffer.sample_batch(batch_size)
                 (obs1, obs2, acts, rews, done) = (torch.Tensor(batch['obs1']),
-                                    torch.Tensor(batch['obs2']),
-                                    torch.Tensor(batch['acts']),
-                                    torch.Tensor(batch['rews']),
-                                    torch.Tensor(batch['done']))
+                                                  torch.Tensor(batch['obs2']),
+                                                  torch.Tensor(batch['acts']),
+                                                  torch.Tensor(batch['rews']),
+                                                  torch.Tensor(batch['done']))
                 _, _, logp_pi, q1, q2, q1_pi, q2_pi, v = main(obs1, acts)
                 v_targ = target.vf_mlp(obs2)
 
@@ -250,10 +257,10 @@ def sac(env_fn,
                 v_backup = (min_q_pi - alpha * logp_pi).detach()
 
                 # Soft actor-critic losses
-                pi_loss = torch.mean(alpha * logp_pi - min_q_pi)
-                q1_loss = 0.5 * torch.mean((q_backup - q1)**2)
-                q2_loss = 0.5 * torch.mean((q_backup - q2)**2)
-                v_loss = 0.5 * torch.mean((v_backup - v)**2)
+                pi_loss = (alpha * logp_pi - min_q_pi).mean()
+                q1_loss = 0.5 * F.mse_loss(q1, q_backup)
+                q2_loss = 0.5 * F.mse_loss(q2, q_backup)
+                v_loss = 0.5 * F.mse_loss(v, v_backup)
                 value_loss = q1_loss + q2_loss + v_loss
 
                 # Policy train op
@@ -266,14 +273,21 @@ def sac(env_fn,
                 value_loss.backward()
                 value_optimizer.step()
 
-                # Polyak averaging for target variables
-                for p_main, p_target in zip(main.vf_mlp.parameters(), target.vf_mlp.parameters()):
-                    p_target.data.copy_(polyak*p_target.data + (1 - polyak)*p_main.data)
+                # Polyak averaging for target parameters
+                for p_main, p_target in zip(main.vf_mlp.parameters(),
+                                            target.vf_mlp.parameters()):
+                    p_target.data.copy_(polyak * p_target.data +
+                                        (1 - polyak) * p_main.data)
 
-                logger.store(LossPi=pi_loss.item(), LossQ1=q1_loss.item(),
-                             LossQ2=q2_loss.item(), LossV=v_loss.item(),
-                             Q1Vals=q1.data.numpy(), Q2Vals=q2.data.numpy(),
-                             VVals=v.data.numpy(), LogPi=logp_pi.data.numpy())
+                logger.store(
+                    LossPi=pi_loss.item(),
+                    LossQ1=q1_loss.item(),
+                    LossQ2=q2_loss.item(),
+                    LossV=v_loss.item(),
+                    Q1Vals=q1.data.numpy(),
+                    Q2Vals=q2.data.numpy(),
+                    VVals=v.data.numpy(),
+                    LogPi=logp_pi.data.numpy())
 
             logger.store(EpRet=ep_ret, EpLen=ep_len)
             o, r, d, ep_ret, ep_len = env.reset(), 0, False, 0, 0
@@ -283,7 +297,7 @@ def sac(env_fn,
             epoch = t // steps_per_epoch
 
             # Save model
-            if (epoch % save_freq == 0) or (epoch == epochs-1):
+            if (epoch % save_freq == 0) or (epoch == epochs - 1):
                 logger.save_state({'env': env}, main, None)
 
             # Test the performance of the deterministic version of the agent.
@@ -304,8 +318,9 @@ def sac(env_fn,
             logger.log_tabular('LossQ1', average_only=True)
             logger.log_tabular('LossQ2', average_only=True)
             logger.log_tabular('LossV', average_only=True)
-            logger.log_tabular('Time', time.time()-start_time)
+            logger.log_tabular('Time', time.time() - start_time)
             logger.dump_tabular()
+
 
 if __name__ == '__main__':
     import argparse
@@ -322,7 +337,10 @@ if __name__ == '__main__':
     from spinup.utils.run_utils import setup_logger_kwargs
     logger_kwargs = setup_logger_kwargs(args.exp_name, args.seed)
 
-    sac(lambda : gym.make(args.env), actor_critic=core.ActorCritic,
-        ac_kwargs=dict(hidden_sizes=[args.hid]*args.l),
-        gamma=args.gamma, seed=args.seed, epochs=args.epochs,
+    sac(lambda: gym.make(args.env),
+        actor_critic=core.ActorCritic,
+        ac_kwargs=dict(hidden_sizes=[args.hid] * args.l),
+        gamma=args.gamma,
+        seed=args.seed,
+        epochs=args.epochs,
         logger_kwargs=logger_kwargs)
