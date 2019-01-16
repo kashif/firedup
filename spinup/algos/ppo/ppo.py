@@ -245,7 +245,7 @@ def ppo(env_fn,
         actor_critic.value_function.parameters(), lr=vf_lr)
 
     # Sync params across processes
-    sync_all_params(actor_critic.state_dict())
+    sync_all_params(actor_critic.parameters())
 
     def update():
         obs, act, adv, ret, logp_old = [torch.Tensor(x) for x in buf.get()]
