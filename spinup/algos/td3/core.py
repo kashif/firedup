@@ -18,11 +18,9 @@ class MLP(nn.Module):
         self.output_scale = output_scale
         self.output_squeeze = output_squeeze
 
-        gain = nn.init.calculate_gain(activation.__name__)
         for i, layer in enumerate(layers[1:]):
             self.layers.append(nn.Linear(layers[i], layer))
             nn.init.zeros_(self.layers[i].bias)
-            nn.init.xavier_uniform_(self.layers[i].weight, gain)
 
     def forward(self, inputs):
         x = inputs
