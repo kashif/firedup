@@ -1,5 +1,5 @@
 from fireup.utils.run_utils import ExperimentGrid
-from spinup import vpg
+from fireup import vpg
 import torch
 
 if __name__ == '__main__':

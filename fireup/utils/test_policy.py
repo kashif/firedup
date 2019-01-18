@@ -3,7 +3,7 @@ import joblib
 import os
 import os.path as osp
 import torch
-from spinup import EpochLogger
+from fireup import EpochLogger
 
 
 def load_policy(fpath, itr='last'):
