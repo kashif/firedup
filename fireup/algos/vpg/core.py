@@ -18,7 +18,7 @@ class MLP(nn.Module):
         self.activation = activation
         self.output_activation = output_activation
         self.output_squeeze = output_squeeze
-
+        
         for i, layer in enumerate(layers[1:]):
             self.layers.append(nn.Linear(layers[i], layer))
             nn.init.zeros_(self.layers[i].bias)
