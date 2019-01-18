@@ -52,9 +52,8 @@ def td3(env_fn, actor_critic=core.ActorCritic, ac_kwargs=dict(), seed=0,
         env_fn : A function which creates a copy of the environment.
             The environment must satisfy the OpenAI Gym API.
 
-        actor_critic: A function which takes in placeholder symbols
-            for state, ``x_ph``, and action, ``a_ph``, and returns the main
-            outputs from the agent's Tensorflow computation graph:
+        actor_critic: The agent's main model which for state ``x`` and
+            action, ``a`` returns the following outputs:
 
             ===========  ================  ======================================
             Symbol       Shape             Description
@@ -62,13 +61,13 @@ def td3(env_fn, actor_critic=core.ActorCritic, ac_kwargs=dict(), seed=0,
             ``pi``       (batch, act_dim)  | Deterministically computes actions
                                            | from policy given states.
             ``q1``       (batch,)          | Gives one estimate of Q* for
-                                           | states in ``x_ph`` and actions in
-                                           | ``a_ph``.
+                                           | states in ``x`` and actions in
+                                           | ``a``.
             ``q2``       (batch,)          | Gives another estimate of Q* for
-                                           | states in ``x_ph`` and actions in
-                                           | ``a_ph``.
+                                           | states in ``x`` and actions in
+                                           | ``a``.
             ``q1_pi``    (batch,)          | Gives the composition of ``q1`` and
-                                           | ``pi`` for states in ``x_ph``:
+                                           | ``pi`` for states in ``x``:
                                            | q1(x, pi(x)).
             ===========  ================  ======================================
 

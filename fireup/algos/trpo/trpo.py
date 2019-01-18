@@ -131,9 +131,8 @@ def trpo(env_fn, actor_critic=core.ActorCritic, ac_kwargs=dict(), seed=0,
         env_fn : A function which creates a copy of the environment.
             The environment must satisfy the OpenAI Gym API.
 
-        actor_critic: A function which takes in placeholder symbols
-            for state, ``x_ph``, and action, ``a_ph``, and returns the main
-            outputs from the agent's Tensorflow computation graph:
+        actor_critic: The agent's main model which for state ``x`` and
+            action, ``a`` returns the following outputs:
 
             ============  ================  ========================================
             Symbol        Shape             Description
@@ -141,8 +140,8 @@ def trpo(env_fn, actor_critic=core.ActorCritic, ac_kwargs=dict(), seed=0,
             ``pi``        (batch, act_dim)  | Samples actions from policy given
                                             | states.
             ``logp``      (batch,)          | Gives log probability, according to
-                                            | the policy, of taking actions ``a_ph``
-                                            | in states ``x_ph``.
+                                            | the policy, of taking actions ``a``
+                                            | in states ``x``.
             ``logp_pi``   (batch,)          | Gives log probability, according to
                                             | the policy, of the action sampled by
                                             | ``pi``.
@@ -154,14 +153,14 @@ def trpo(env_fn, actor_critic=core.ActorCritic, ac_kwargs=dict(), seed=0,
                                             | distributions)
             ``info_phs``  N/A               | A dict of placeholders for old values
                                             | of the entries in ``info``.
-            ``d_kl``      ()                | A symbol for computing the mean KL
+            ``d_kl``      ()                | The mean KL
                                             | divergence between the current policy
                                             | (``pi``) and the old policy (as
                                             | specified by the inputs to
-                                            | ``info_phs``) over the batch of
-                                            | states given in ``x_ph``.
+                                            | ``info``) over the batch of
+                                            | states given in ``x``.
             ``v``         (batch,)          | Gives the value estimate for states
-                                            | in ``x_ph``. (Critical: make sure
+                                            | in ``x``. (Critical: make sure
                                             | to flatten this!)
             ============  ================  ========================================
 
