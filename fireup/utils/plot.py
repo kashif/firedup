@@ -59,7 +59,7 @@ def plot_data(data, xaxis='Epoch', value="AverageEpRet", condition="Condition1",
 def get_datasets(logdir, condition=None):
     """
     Recursively look through logdir for output files produced by
-    spinup.logx.Logger.
+    fireup.logx.Logger.
 
     Assumes that any file "progress.txt" is a valid hit.
     """

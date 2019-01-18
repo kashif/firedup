@@ -1,5 +1,5 @@
-from spinup.utils.run_utils import ExperimentGrid
-from spinup import ppo
+from fireup.utils.run_utils import ExperimentGrid
+from spinup import vpg
 import torch
 
 if __name__ == '__main__':
@@ -9,11 +9,11 @@ if __name__ == '__main__':
     parser.add_argument('--num_runs', type=int, default=3)
     args = parser.parse_args()
 
-    eg = ExperimentGrid(name='ppo-bench')
+    eg = ExperimentGrid(name='vpg-bench')
     eg.add('env_name', 'CartPole-v0', '', True)
     eg.add('seed', [10*i for i in range(args.num_runs)])
     eg.add('epochs', 10)
     eg.add('steps_per_epoch', 4000)
     eg.add('ac_kwargs:hidden_sizes', [(32,), (64,64)], 'hid')
     eg.add('ac_kwargs:activation', [torch.tanh, torch.relu], '')
-    eg.run(ppo, num_cpu=args.cpu)
+    eg.run(vpg, num_cpu=args.cpu)

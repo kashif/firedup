@@ -1,5 +1,5 @@
 import torch
-from spinup.utils.mpi_tools import broadcast, mpi_avg
+from fireup.utils.mpi_tools import broadcast, mpi_avg
 
 
 def sync_all_params(param, root=0):

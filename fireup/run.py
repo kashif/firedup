@@ -1,6 +1,6 @@
 import spinup
-from spinup.utils.run_utils import ExperimentGrid
-from spinup.utils.serialization_utils import convert_json
+from fireup.utils.run_utils import ExperimentGrid
+from fireup.utils.serialization_utils import convert_json
 import argparse
 import gym
 import json
@@ -34,12 +34,12 @@ def parse_and_execute_grid_search(cmd, args):
     """Interprets algorithm name and cmd line args into an ExperimentGrid."""
 
     # Parse which algorithm to execute
-    algo = eval('spinup.'+cmd)
+    algo = eval('fireup.'+cmd)
 
     # Before all else, check to see if any of the flags is 'help'.
     valid_help = ['--help', '-h', 'help']
     if any([arg in valid_help for arg in args]):
-        print('\n\nShowing docstring for spinup.'+cmd+':\n')
+        print('\n\nShowing docstring for fireup.'+cmd+':\n')
         print(algo.__doc__)
         sys.exit()
 
@@ -91,7 +91,7 @@ def parse_and_execute_grid_search(cmd, args):
 
     # Penultimate pass: sugar. Allow some special shortcuts in arg naming,
     # eg treat "env" the same as "env_name". This is super specific
-    # to Spinning Up implementations, and may be hard to maintain.
+    # to Fired Up implementations, and may be hard to maintain.
     # These special shortcuts are described by SUBSTITUTIONS.
     for special_name, true_name in SUBSTITUTIONS.items():
         if special_name in arg_dict:
@@ -179,7 +179,7 @@ if __name__ == '__main__':
     valid_help = ['--help', '-h', 'help']
     valid_cmds = valid_algos + valid_utils + valid_help
     assert cmd in valid_cmds, \
-        "Select an algorithm or utility which is implemented in Spinning Up."
+        "Select an algorithm or utility which is implemented in Fired Up."
 
     if cmd in valid_help:
         # Before all else, check to see if any of the flags is 'help'.
@@ -187,9 +187,9 @@ if __name__ == '__main__':
         # List commands that are available.
         str_valid_cmds = '\n\t' + '\n\t'.join(valid_algos+valid_utils)
         help_msg = dedent("""
-            Experiment in Spinning Up from the command line with
+            Experiment in Fired Up from the command line with
 
-            \tpython -m spinup.run CMD [ARGS...]
+            \tpython -m fireup.run CMD [ARGS...]
 
             where CMD is a valid command. Current valid commands are:
             """) + str_valid_cmds
@@ -203,12 +203,12 @@ if __name__ == '__main__':
             FYI: When running an algorithm, any keyword argument to the
             algorithm function can be used as a flag, eg
 
-            \tpython -m spinup.run ppo --env HalfCheetah-v2 --clip_ratio 0.1
+            \tpython -m fireup.run ppo --env HalfCheetah-v2 --clip_ratio 0.1
 
             If you need a quick refresher on valid kwargs, get the docstring
             with
 
-            \tpython -m spinup.run [algo] --help
+            \tpython -m fireup.run [algo] --help
 
             See the "Running Experiments" docs page for more details.
 
