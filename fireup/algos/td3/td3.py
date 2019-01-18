@@ -1,5 +1,6 @@
 import numpy as np
 import torch
+import torch.nn.functional as F
 import gym
 import time
 from fireup.algos.td3 import core
@@ -170,7 +171,7 @@ def td3(env_fn, actor_critic=core.ActorCritic, ac_kwargs=dict(), seed=0,
         return np.clip(a, -act_limit, act_limit)
 
     def test_agent(n=10):
-        for j in range(n):
+        for _ in range(n):
             o, r, d, ep_ret, ep_len = test_env.reset(), 0, False, 0, 0
             while not(d or (ep_len == max_ep_len)):
                 # Take deterministic actions at test time (noise_scale=0)
@@ -231,7 +232,7 @@ def td3(env_fn, actor_critic=core.ActorCritic, ac_kwargs=dict(), seed=0,
 
                  # Target policy smoothing, by adding clipped noise to target actions
                 epsilon = torch.normal(torch.zeros_like(pi_targ),
-                                      target_noise*torch.ones_like(pi_targ))
+                                       target_noise*torch.ones_like(pi_targ))
                 epsilon = torch.clamp(epsilon, -noise_clip, noise_clip)
                 a2 = torch.clamp(pi_targ + epsilon, -act_limit, act_limit)
 
@@ -243,8 +244,8 @@ def td3(env_fn, actor_critic=core.ActorCritic, ac_kwargs=dict(), seed=0,
                 backup = (rews + gamma * (1 - done) * min_q_targ).detach()
 
                 # TD3 Q losses
-                q1_loss = torch.mean((q1 - backup)**2)
-                q2_loss = torch.mean((q2 - backup)**2)
+                q1_loss = F.mse_loss(q1, backup)
+                q2_loss = F.mse_loss(q2, backup)
                 q_loss = q1_loss + q2_loss
 
                 q_optimizer.zero_grad()
@@ -258,7 +259,7 @@ def td3(env_fn, actor_critic=core.ActorCritic, ac_kwargs=dict(), seed=0,
                     _, _, _, q1_pi = main(obs1, acts)
 
                     # TD3 policy loss
-                    pi_loss = -torch.mean(q1_pi)
+                    pi_loss = -q1_pi.mean()
 
                     # Delayed policy update
                     pi_optimizer.zero_grad()
