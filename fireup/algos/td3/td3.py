@@ -222,22 +222,25 @@ def td3(env_fn, actor_critic=core.ActorCritic, ac_kwargs=dict(), seed=0,
             """
             for j in range(ep_len):
                 batch = replay_buffer.sample_batch(batch_size)
-                (obs1, obs2, acts, rews, done) = (torch.Tensor(batch['obs1']),
-                                    torch.Tensor(batch['obs2']),
-                                    torch.Tensor(batch['acts']),
-                                    torch.Tensor(batch['rews']),
-                                    torch.Tensor(batch['done']))
-                _, q1, q2, _ = main(obs1, acts)
+                (obs1, obs2, acts, rews, done) = (torch.tensor(batch['obs1']),
+                                                  torch.tensor(batch['obs2']),
+                                                  torch.tensor(batch['acts']),
+                                                  torch.tensor(batch['rews']),
+                                                  torch.tensor(batch['done']))
+                q1 = main.q1(torch.cat((obs1, acts), dim=1))
+                q2 = main.q2(torch.cat((obs1, acts), dim=1))
                 pi_targ = target.policy(obs2)
 
-                 # Target policy smoothing, by adding clipped noise to target actions
+                # Target policy smoothing, by adding clipped noise to target actions
                 epsilon = torch.normal(torch.zeros_like(pi_targ),
                                        target_noise*torch.ones_like(pi_targ))
+
                 epsilon = torch.clamp(epsilon, -noise_clip, noise_clip)
                 a2 = torch.clamp(pi_targ + epsilon, -act_limit, act_limit)
 
-                 # Target Q-values, using action from target policy
-                _, q1_targ, q2_targ, _ = target(obs2, a2)
+                # Target Q-values, using action from target policy
+                q1_targ = target.q1(torch.cat((obs2, a2), dim=1))
+                q2_targ = target.q2(torch.cat((obs2, a2), dim=1))
 
                 # Bellman backup for Q functions, using Clipped Double-Q targets
                 min_q_targ = torch.min(q1_targ, q2_targ)
@@ -256,7 +259,7 @@ def td3(env_fn, actor_critic=core.ActorCritic, ac_kwargs=dict(), seed=0,
                              Q2Vals=q2.data.numpy())
 
                 if j % policy_delay == 0:
-                    _, _, _, q1_pi = main(obs1, acts)
+                    q1_pi = main.q1(torch.cat((obs1, main.policy(obs1)), dim=1))
 
                     # TD3 policy loss
                     pi_loss = -q1_pi.mean()
