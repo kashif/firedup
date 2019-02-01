@@ -246,7 +246,7 @@ def trpo(env_fn, actor_critic=core.ActorCritic, ac_kwargs=dict(), seed=0,
         info_shapes = {'old_mu': [1, env.action_space.shape[-1]], 
                        'old_log_std': [env.action_space.shape[-1]]}
     else:
-        info_shapes = {'old_logit': [env.action_space.n]}
+        info_shapes = {'old_logits': [env.action_space.n]}
     buf = GAEBuffer(obs_dim, act_dim, local_steps_per_epoch, info_shapes, gamma, lam)
 
     # Count variables
@@ -362,7 +362,7 @@ def trpo(env_fn, actor_critic=core.ActorCritic, ac_kwargs=dict(), seed=0,
                       core.values_as_sorted_list(info_t))
             logger.store(VVals=v_t)
 
-            o, r, d, _ = env.step(a)
+            o, r, d, _ = env.step(a.data.numpy()[0])
             ep_ret += r
             ep_len += 1
 
