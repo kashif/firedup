@@ -23,7 +23,7 @@ def flat_grad(f, param, **kwargs):
 def hessian_vector_product(f, policy, x):
     # for H = grad**2 f, compute Hx
     g = flat_grad(f, policy.parameters(), create_graph=True)
-    return x, flat_grad((g*x.detach()).sum(), policy.parameters(), allow_unused=True, retain_graph=True)
+    return flat_grad((g*x.detach()).sum(), policy.parameters(), retain_graph=True)
 
 class MLP(nn.Module):
     def __init__(self, layers, activation=torch.tanh, output_activation=None,

@@ -274,7 +274,7 @@ def trpo(env_fn, actor_critic=core.ActorCritic, ac_kwargs=dict(), seed=0,
             alpha = r_dot_old / (torch.dot(p, z) + EPS)
             x += alpha * p
             r -= alpha * z
-            r_dot_new = torch.dot(r,r)
+            r_dot_new = torch.dot(r, r)
             p = r + (r_dot_new / r_dot_old) * p
             r_dot_old = r_dot_new
         return x
@@ -292,19 +292,18 @@ def trpo(env_fn, actor_critic=core.ActorCritic, ac_kwargs=dict(), seed=0,
         pi_l_old = -(ratio * adv).mean()
         v_l_old = F.mse_loss(v, ret)
 
-        g = core.flat_grad(pi_l_old, actor_critic.policy.parameters(), retain_graph=True).detach()
-        g.data.copy_(torch.tensor(mpi_avg(g.data.numpy())))
-        pi_l_old = mpi_avg(pi_l_old.item())
+        g = core.flat_grad(pi_l_old, actor_critic.policy.parameters(), retain_graph=True)
+        g, pi_l_old = torch.tensor(mpi_avg(g.data.numpy())), mpi_avg(pi_l_old.item())
         
         def Hx(x):
-            x, hvp = core.hessian_vector_product(d_kl, actor_critic.policy, x)
+            hvp = core.hessian_vector_product(d_kl, actor_critic.policy, x)
             if damping_coeff > 0:
                 hvp += damping_coeff * x
-            return x
+            return torch.tensor(mpi_avg(hvp.data.numpy()))
 
         # Core calculations for TRPO or NPG
         x = cg(Hx, g)
-        alpha = torch.sqrt(2*delta/(torch.dot(x, Hx(x))+EPS))
+        alpha = torch.sqrt(2*delta/(torch.dot(x, Hx(x)) + EPS))
 
         def set_and_eval(step):
             vector_to_parameters(pi_l_old - alpha * x * step, actor_critic.policy.parameters())
