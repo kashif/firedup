@@ -243,7 +243,7 @@ def trpo(env_fn, actor_critic=core.ActorCritic, ac_kwargs=dict(), seed=0,
     # Experience buffer
     local_steps_per_epoch = int(steps_per_epoch / num_procs())
     if isinstance(env.action_space, Box):
-        info_shapes = {'old_mu': [1, env.action_space.shape[-1]], 
+        info_shapes = {'old_mu': [env.action_space.shape[-1]],
                        'old_log_std': [env.action_space.shape[-1]]}
     else:
         info_shapes = {'old_logits': [env.action_space.n]}
