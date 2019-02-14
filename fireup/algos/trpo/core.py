@@ -105,7 +105,7 @@ class GaussianPolicy(nn.Module):
         else:
             d_kl = None
         
-        info = {'old_mu': mu.data.numpy(), 'old_log_std': self.log_std.data.numpy()}
+        info = {'old_mu': np.squeeze(mu.data.numpy()), 'old_log_std': self.log_std.data.numpy()}
 
         return pi, logp, logp_pi, info, d_kl
 
