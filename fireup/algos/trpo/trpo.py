@@ -380,7 +380,7 @@ def trpo(env_fn, actor_critic=core.ActorCritic, ac_kwargs=dict(), seed=0,
 
         # Save model
         if (epoch % save_freq == 0) or (epoch == epochs-1):
-            logger.save_state({'env': env}, None)
+            logger.save_state({'env': env}, actor_critic, None)
 
         # Perform TRPO or NPG update!
         actor_critic.train()
