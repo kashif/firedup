@@ -1,7 +1,7 @@
 import numpy as np
 import torch
 import torch.nn.functional as F
-from torch.nn.utils import vector_to_parameters
+from torch.nn.utils import vector_to_parameters, parameters_to_vector
 import gym
 from gym.spaces import Box
 import time
@@ -266,8 +266,8 @@ def trpo(env_fn, actor_critic=core.ActorCritic, ac_kwargs=dict(), seed=0,
         (see https://en.wikipedia.org/wiki/Conjugate_gradient_method)
         """
         x = torch.zeros_like(b)
-        r = b.clone() # Note: should be 'b - Ax(x)', but for x=0, Ax(x)=0. Change if doing warm start.
-        p = b.clone()
+        r = b # Note: should be 'b - Ax(x)', but for x=0, Ax(x)=0. Change if doing warm start.
+        p = b
         r_dot_old = torch.dot(r,r)
         for _ in range(cg_iters):
             z = Ax(p)
@@ -293,20 +293,21 @@ def trpo(env_fn, actor_critic=core.ActorCritic, ac_kwargs=dict(), seed=0,
         v_l_old = F.mse_loss(v, ret)
 
         g = core.flat_grad(pi_l_old, actor_critic.policy.parameters(), retain_graph=True)
-        g, pi_l_old = torch.tensor(mpi_avg(g.data.numpy())), mpi_avg(pi_l_old.item())
+        g, pi_l_old = torch.tensor(mpi_avg(g.numpy())), mpi_avg(pi_l_old.item())
         
         def Hx(x):
             hvp = core.hessian_vector_product(d_kl, actor_critic.policy, x)
             if damping_coeff > 0:
                 hvp += damping_coeff * x
-            return torch.tensor(mpi_avg(hvp.data.numpy()))
+            return torch.tensor(mpi_avg(hvp.numpy()))
 
         # Core calculations for TRPO or NPG
         x = cg(Hx, g)
         alpha = torch.sqrt(2*delta/(torch.dot(x, Hx(x)) + EPS))
+        old_params = parameters_to_vector(actor_critic.policy.parameters())
 
         def set_and_eval(step):
-            vector_to_parameters(pi_l_old - alpha * x * step, actor_critic.policy.parameters())
+            vector_to_parameters(old_params - alpha * x * step, actor_critic.policy.parameters())
             _, logp, _, _, d_kl = actor_critic.policy(obs, act, **policy_args)
             ratio = (logp - logp_old).exp()
             pi_loss = -(ratio * adv).mean()
@@ -357,11 +358,11 @@ def trpo(env_fn, actor_critic=core.ActorCritic, ac_kwargs=dict(), seed=0,
             a, _, logp_t, info_t, _, v_t = actor_critic(torch.Tensor(o.reshape(1,-1)))
 
             # save and log
-            buf.store(o, a.data.numpy(), r, v_t.item(), logp_t.data.numpy(),
+            buf.store(o, a.detach().numpy(), r, v_t.item(), logp_t.detach().numpy(),
                       core.values_as_sorted_list(info_t))
             logger.store(VVals=v_t)
 
-            o, r, d, _ = env.step(a.data.numpy()[0])
+            o, r, d, _ = env.step(a.detach().numpy()[0])
             ep_ret += r
             ep_len += 1
 
