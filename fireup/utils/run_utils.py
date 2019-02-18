@@ -46,7 +46,7 @@ def setup_logger_kwargs(exp_name, seed=None, data_dir=None, datestamp=False):
         output_dir = data_dir/YY-MM-DD_exp_name/YY-MM-DD_HH-MM-SS_exp_name_s[seed]
 
     You can force datestamp=True by setting ``FORCE_DATESTAMP=True`` in
-    ``spinup/user_config.py``.
+    ``fireup/user_config.py``.
 
     Args:
 
@@ -55,7 +55,7 @@ def setup_logger_kwargs(exp_name, seed=None, data_dir=None, datestamp=False):
         seed (int): Seed for random number generators used by experiment.
 
         data_dir (string): Path to folder where results should be saved.
-            Default is the ``DEFAULT_DATA_DIR`` in ``spinup/user_config.py``.
+            Default is the ``DEFAULT_DATA_DIR`` in ``fireup/user_config.py``.
 
         datestamp (bool): Whether to include a date and timestamp in the
             name of the save directory.
@@ -122,7 +122,7 @@ def call_experiment(exp_name, thunk, seed=0, num_cpu=1, data_dir=None,
 
         data_dir (string): Used in configuring the logger, to decide where
             to store experiment results. Note: if left as None, data_dir will
-            default to ``DEFAULT_DATA_DIR`` from ``spinup/user_config.py``.
+            default to ``DEFAULT_DATA_DIR`` from ``fireup/user_config.py``.
 
         **kwargs: All kwargs to pass to thunk.
 
@@ -311,7 +311,7 @@ class ExperimentGrid:
         By default, if a shorthand isn't given, one is automatically generated
         from the key using the first three letters of each colon-separated
         term. To disable this behavior, change ``DEFAULT_SHORTHAND`` in the
-        ``spinup/user_config.py`` file to ``False``.
+        ``fireup/user_config.py`` file to ``False``.
 
         Args:
             key (string): Name of parameter.
@@ -516,7 +516,7 @@ class ExperimentGrid:
             Launch delayed to give you a few seconds to review your experiments.
 
             To customize or disable this behavior, change WAIT_BEFORE_LAUNCH in
-            spinup/user_config.py.
+            fireup/user_config.py.
 
             """), color='cyan', bold=True)+line
             print(delay_msg)

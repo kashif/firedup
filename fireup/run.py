@@ -1,4 +1,4 @@
-import spinup
+import fireup
 from fireup.utils.run_utils import ExperimentGrid
 from fireup.utils.serialization_utils import convert_json
 import argparse
