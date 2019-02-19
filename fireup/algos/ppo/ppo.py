@@ -250,14 +250,6 @@ def ppo(env_fn,
     def update():
         obs, act, adv, ret, logp_old = [torch.Tensor(x) for x in buf.get()]
 
-        # Training policy
-        _, logp, _ = actor_critic.policy(obs, act)
-        ratio = (logp - logp_old).exp()
-        min_adv = torch.where(adv > 0, (1 + clip_ratio) * adv,
-                              (1 - clip_ratio) * adv)
-        pi_l_old = -(torch.min(ratio * adv, min_adv)).mean()
-        ent = (-logp).mean()  # a sample estimate for entropy
-
         for i in range(train_pi_iters):
             # Output from policy function graph
             _, logp, _ = actor_critic.policy(obs, act)
