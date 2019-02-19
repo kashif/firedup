@@ -267,20 +267,19 @@ def ppo(env_fn,
                                   (1 - clip_ratio) * adv)
             pi_loss = -(torch.min(ratio * adv, min_adv)).mean()
 
-            # Policy gradient step
-            train_pi.zero_grad()
-            pi_loss.backward()
-            average_gradients(train_pi.param_groups)
-            train_pi.step()
-
-            _, logp, _ = actor_critic.policy(obs, act)
             kl = (logp_old - logp).mean()
             kl = mpi_avg(kl.item())
             if kl > 1.5 * target_kl:
                 logger.log(
                     'Early stopping at step %d due to reaching max kl.' % i)
                 break
-        logger.store(StopIter=i)
+            logger.store(StopIter=i)
+            
+            # Policy gradient step
+            train_pi.zero_grad()
+            pi_loss.backward()
+            average_gradients(train_pi.param_groups)
+            train_pi.step()
 
         # Training value function
         v = actor_critic.value_function(obs)
