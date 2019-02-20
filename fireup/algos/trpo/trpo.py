@@ -293,13 +293,14 @@ def trpo(env_fn, actor_critic=core.ActorCritic, ac_kwargs=dict(), seed=0,
         v_l_old = F.mse_loss(v, ret)
 
         g = core.flat_grad(pi_l_old, actor_critic.policy.parameters(), retain_graph=True)
-        g, pi_l_old = torch.tensor(mpi_avg(g.numpy())), mpi_avg(pi_l_old.item())
+        g = torch.from_numpy(mpi_avg(g.numpy()))
+        pi_l_old = mpi_avg(pi_l_old.item())
         
         def Hx(x):
             hvp = core.hessian_vector_product(d_kl, actor_critic.policy, x)
             if damping_coeff > 0:
                 hvp += damping_coeff * x
-            return torch.tensor(mpi_avg(hvp.numpy()))
+            return torch.from_numpy(mpi_avg(hvp.numpy()))
 
         # Core calculations for TRPO or NPG
         x = cg(Hx, g)

@@ -188,7 +188,7 @@ def sac(env_fn,
 
     def get_action(o, deterministic=False):
         pi, mu, _ = main.policy(torch.Tensor(o.reshape(1, -1)))
-        return mu.data.numpy()[0] if deterministic else pi.data.numpy()[0]
+        return mu.detach().numpy()[0] if deterministic else pi.detach().numpy()[0]
 
     def test_agent(n=10):
         for _ in range(n):
@@ -284,10 +284,10 @@ def sac(env_fn,
                     LossQ1=q1_loss.item(),
                     LossQ2=q2_loss.item(),
                     LossV=v_loss.item(),
-                    Q1Vals=q1.data.numpy(),
-                    Q2Vals=q2.data.numpy(),
-                    VVals=v.data.numpy(),
-                    LogPi=logp_pi.data.numpy())
+                    Q1Vals=q1.detach().numpy(),
+                    Q2Vals=q2.detach().numpy(),
+                    VVals=v.detach().numpy(),
+                    LogPi=logp_pi.detach().numpy())
 
             logger.store(EpRet=ep_ret, EpLen=ep_len)
             o, r, d, ep_ret, ep_len = env.reset(), 0, False, 0, 0

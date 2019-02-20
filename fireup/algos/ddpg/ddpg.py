@@ -172,7 +172,7 @@ def ddpg(env_fn,
 
     def get_action(o, noise_scale):
         pi = main.policy(torch.Tensor(o.reshape(1, -1)))
-        a = pi.data.numpy()[0] + noise_scale * np.random.randn(act_dim)
+        a = pi.detach().numpy()[0] + noise_scale * np.random.randn(act_dim)
         return np.clip(a, -act_limit, act_limit)
 
     def test_agent(n=10):

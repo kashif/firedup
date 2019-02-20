@@ -255,8 +255,8 @@ def td3(env_fn, actor_critic=core.ActorCritic, ac_kwargs=dict(), seed=0,
                 q_loss.backward()
                 q_optimizer.step()
 
-                logger.store(LossQ=q_loss.item(), Q1Vals=q1.data.numpy(),
-                             Q2Vals=q2.data.numpy())
+                logger.store(LossQ=q_loss.item(), Q1Vals=q1.detach().numpy(),
+                             Q2Vals=q2.detach().numpy())
 
                 if j % policy_delay == 0:
                     q1_pi = main.q1(torch.cat((obs1, main.policy(obs1)), dim=1))

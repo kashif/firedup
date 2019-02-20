@@ -62,11 +62,10 @@ class GaussianPolicy(nn.Module):
 
         self.mu = MLP(layers=[in_features]+list(hidden_sizes)+[action_dim],
                       activation=activation, output_activation=output_activation)
-        self.log_std = nn.Parameter(-0.5*torch.ones(action_dim, dtype=torch.float32))
+        self.log_std = nn.Parameter(-0.5 * torch.ones(action_dim))
 
     def forward(self, x, a=None):
-        mu = self.mu(x)
-        policy = Normal(mu, self.log_std.exp())
+        policy = Normal(self.mu(x), self.log_std.exp())
         pi = policy.sample()
         logp_pi = policy.log_prob(pi).sum(dim=1)
         if a is not None:

@@ -48,7 +48,7 @@ def run_policy(env, get_action, max_ep_len=None, num_episodes=100, render=True):
             time.sleep(1e-3)
 
         a = get_action(torch.Tensor(o.reshape(1,-1)))[0]
-        o, r, d, _ = env.step(a.data.numpy()[0])
+        o, r, d, _ = env.step(a.detach().numpy()[0])
         ep_ret += r
         ep_len += 1
 

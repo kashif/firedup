@@ -326,10 +326,10 @@ def ppo(env_fn,
             a, _, logp_t, v_t = actor_critic(torch.Tensor(o.reshape(1, -1)))
 
             # save and log
-            buf.store(o, a.data.numpy(), r, v_t.item(), logp_t.data.numpy())
+            buf.store(o, a.detach().numpy(), r, v_t.item(), logp_t.detach().numpy())
             logger.store(VVals=v_t)
 
-            o, r, d, _ = env.step(a.data.numpy()[0])
+            o, r, d, _ = env.step(a.detach().numpy()[0])
             ep_ret += r
             ep_len += 1
 
