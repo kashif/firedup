@@ -12,7 +12,7 @@ def linearly_decaying_epsilon(decay_period, step, warmup_steps, epsilon):
     bonus = (1.0 - epsilon) * steps_left / decay_period
     bonus = np.clip(bonus, 0., 1. - epsilon)
     return epsilon + bonus
-    
+
 
 class MLP(nn.Module):
     def __init__(self,
@@ -52,10 +52,7 @@ class DQNetwork(nn.Module):
                  output_activation=None):
         super(DQNetwork, self).__init__()
 
-        if isinstance(action_space, Box):
-            action_dim = action_space.shape[0]
-        else:
-            action_dim = action_space.n
+        action_dim = action_space.n
 
         self.policy = MLP(
             layers=[in_features] + list(hidden_sizes) + [action_dim],

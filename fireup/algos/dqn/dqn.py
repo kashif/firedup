@@ -5,7 +5,6 @@ import gym
 import time
 from fireup.algos.dqn import core
 from fireup.utils.logx import EpochLogger
-from gym.spaces import Box, Discrete
 
 
 class ReplayBuffer:
@@ -161,7 +160,7 @@ def dqn(env_fn,
             o, r, d, ep_ret, ep_len = env.reset(), 0, False, 0, 0
 
         # train at the rate of update_period if enough training steps have been run
-        if replay_buffer.size < min_replay_history and t % update_period == 0:
+        if replay_buffer.size > min_replay_history and t % update_period == 0:
             batch = replay_buffer.sample_batch(batch_size)
             (obs1, obs2, acts, rews, done) = (torch.Tensor(batch['obs1']),
                                               torch.Tensor(batch['obs2']),
@@ -181,14 +180,14 @@ def dqn(env_fn,
             value_optimizer.zero_grad()
             value_loss.backward()
             value_optimizer.step()
-            #logger.store(LossQ=value_loss)
+            logger.store(LossQ=value_loss.item(), QVals=q_pi.data.numpy())
 
         # syncs weights from online to target network
         if t % target_update_period == 0:
             target.load_state_dict(main.state_dict())
 
         # End of epoch wrap-up
-        if t > 0 and t % steps_per_epoch == 0:
+        if replay_buffer.size > min_replay_history and t % steps_per_epoch == 0:
             epoch = t // steps_per_epoch
 
             # Save model
@@ -205,7 +204,7 @@ def dqn(env_fn,
             logger.log_tabular('EpLen', average_only=True)
             logger.log_tabular('TestEpLen', average_only=True)
             logger.log_tabular('TotalEnvInteracts', t)
-            #logger.log_tabular('QVals', with_min_and_max=True)
-            #logger.log_tabular('LossQ', average_only=True)
+            logger.log_tabular('QVals', with_min_and_max=True)
+            logger.log_tabular('LossQ', average_only=True)
             logger.log_tabular('Time', time.time() - start_time)
             logger.dump_tabular()
