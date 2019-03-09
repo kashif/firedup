@@ -1,19 +1,17 @@
-# Welcome to Fired Up in Deep RL! 
+# Welcome to Fired Up in Deep RL!
 
 
 This is a clone of OpenAI's [Spinning Up](https://github.com/openai/spinningup) in PyTorch. Spinning Up is an awesome educational resource produced by Josh Achiam, a  research scientist at [OpenAI](https://openai.com/), that makes it easier to learn about deep reinforcement learning (deep RL).
 
 ## Installation
 
-Fired Up requires Python3, PyTorch, OpenAI Gym, and OpenMPI. 
+Fired Up requires Python3, PyTorch, OpenAI Gym, and OpenMPI.
 
 Fired Up is currently only supported on Linux and OSX. It may be possible to install on Windows, though I  haven't tested this OS.
 
 ### Installing Python
 
-We recommend installing Python through [Anaconda](https://www.anaconda.com/distribution/#download-section). Anaconda is a Python distribution that includes many useful packages for especially for scientific computing, as well as an environment manager called `conda` that makes package management simple.
-
-
+We recommend installing Python through [Anaconda](https://www.anaconda.com/distribution/#download-section). Anaconda is a Python distribution that includes many useful packages especially for scientific computing, as well as an environment manager called `conda` that makes package management simple.
 
 Download and install Anaconda 2018.x (at time of writing, 2018.12) Python 3.7. Then create a `conda` environment for organizing packages used in Fired Up:
 
@@ -25,6 +23,18 @@ To use Python from the environment you just created, activate the environment wi
 
 ```
 source activate firedup
+```
+
+You can alternatively use [virtualenv](https://virtualenv.pypa.io/en/latest/) with the Python3 version you have. Just install it via `pip3` and then:
+
+```
+virtualenv firedup
+```
+
+To activate this virtual environment you need to:
+
+```
+source /path/to/firedup/bin/activate
 ```
 
 ### Installing OpenMPI
@@ -42,7 +52,6 @@ Installation of system packages on Mac requires [Homebrew](https://brew.sh). Wit
 ```
 brew install openmpi
 ```
-
 
 ### Installing Fired Up
 
@@ -81,9 +90,9 @@ The following algorithms are implemented in the Fired Up package:
 * Vanilla Policy Gradient (VPG)
 * Trust Region Policy Optimization (TRPO)
 * Proximal Policy Optimization (PPO)
+* Deep Q-Network (DQN)
 * Deep Deterministic Policy Gradient (DDPG)
 * Twin Delayed DDPG (TD3)
 * Soft Actor-Critic (SAC)
 
-They are all implemented with MLP (non-recurrent) actor-critics, making them suitable for fully-observed, non-image-based RL environments, eg the Gym Mujoco environments.
-
+They are all implemented with MLP (non-recurrent) actor-critics, making them suitable for fully-observed, non-image-based RL environments, e.g. the Gym Mujoco environments.
