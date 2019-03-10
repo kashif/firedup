@@ -90,11 +90,11 @@ def dqn(env_fn,
 
     # Count variables
     var_counts = tuple(
-        core.count_vars(module) for module in [main.policy, main])
+        core.count_vars(module) for module in [main.q, main])
     print(('\nNumber of parameters: \t q: %d, \t total: %d\n')%var_counts)
 
     # Value train op
-    value_params = main.policy.parameters()
+    value_params = main.q.parameters()
     value_optimizer = torch.optim.Adam(value_params, lr=lr)
 
     # Initializing targets to match main variables
@@ -161,6 +161,7 @@ def dqn(env_fn,
 
         # train at the rate of update_period if enough training steps have been run
         if replay_buffer.size > min_replay_history and t % update_period == 0:
+            main.train()
             batch = replay_buffer.sample_batch(batch_size)
             (obs1, obs2, acts, rews, done) = (torch.Tensor(batch['obs1']),
                                               torch.Tensor(batch['obs2']),

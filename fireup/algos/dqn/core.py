@@ -54,11 +54,13 @@ class DQNetwork(nn.Module):
 
         action_dim = action_space.n
 
-        self.policy = MLP(
+        self.q = MLP(
             layers=[in_features] + list(hidden_sizes) + [action_dim],
             activation=activation,
             output_activation=output_activation)
 
     def forward(self, x):
-        q = self.policy(x)
-        return q
+        return self.q(x)
+
+    def policy(self, x):
+        return torch.argmax(self.q(x), dim=1, keepdim=True)
