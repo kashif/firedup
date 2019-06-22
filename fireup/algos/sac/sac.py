@@ -59,6 +59,7 @@ def sac(env_fn,
         polyak=0.995,
         lr=1e-3,
         alpha=0.2,
+        optimize_alpha=True,
         batch_size=100,
         start_steps=10000,
         max_ep_len=1000,
@@ -129,6 +130,8 @@ def sac(env_fn,
 
         alpha (float): Entropy regularization coefficient. (Equivalent to
             inverse of reward scale in the original SAC paper.)
+        
+        optimize_alpha (bool): Automatic entropy tuning flag.
 
         batch_size (int): Minibatch size for SGD.
 
@@ -182,6 +185,12 @@ def sac(env_fn,
     value_params = list(main.vf_mlp.parameters()) + list(
         main.q1.parameters()) + list(main.q2.parameters())
     value_optimizer = torch.optim.Adam(value_params, lr=lr)
+
+    # alpha optimimer
+    if optimize_alpha:
+        target_entropy = -np.prod(env.action_space.shape).item()
+        log_alpha = torch.zeros(1, requires_grad=True)
+        alpha_optimizer = torch.optim.Adam([log_alpha], lr=lr)
 
     # Initializing targets to match main variables
     target.vf_mlp.load_state_dict(main.vf_mlp.state_dict())
@@ -248,6 +257,17 @@ def sac(env_fn,
                                                   torch.Tensor(batch['done']))
                 _, _, logp_pi, q1, q2, q1_pi, q2_pi, v = main(obs1, acts)
                 v_targ = target.vf_mlp(obs2)
+
+                # Automatic entropy tuning
+                if optimize_alpha:
+                    alpha_loss = -(log_alpha * (logp_pi + target_entropy).detach()).mean()
+                    alpha_optimizer.zero_grad()
+                    alpha_loss.backward()
+                    alpha_optimizer.step()
+                    alpha = log_alpha.exp()
+                    logger.store(
+                        LossAlpha=alpha_loss.item(),
+                        Alpha=alpha.item())
 
                 # Min Double-Q:
                 min_q_pi = torch.min(q1_pi, q2_pi)
@@ -318,6 +338,9 @@ def sac(env_fn,
             logger.log_tabular('LossQ1', average_only=True)
             logger.log_tabular('LossQ2', average_only=True)
             logger.log_tabular('LossV', average_only=True)
+            if optimize_alpha:
+                logger.log_tabular('LossAlpha', average_only=True)
+                logger.log_tabular('Alpha', average_only=True)
             logger.log_tabular('Time', time.time() - start_time)
             logger.dump_tabular()
 
