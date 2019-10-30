@@ -96,3 +96,16 @@ The following algorithms are implemented in the Fired Up package:
 * Soft Actor-Critic (SAC)
 
 They are all implemented with MLP (non-recurrent) actor-critics, making them suitable for fully-observed, non-image-based RL environments, e.g. the Gym Mujoco environments.
+
+## Citation
+
+If you use Fired Up in your research please  use the following BibTeX entry:
+
+```BibTeX
+@misc{rasulfiredup,
+  author =       {Kashif Rasul and Josh Achiam},
+  title =        {Fired Up},
+  howpublished = {\url{https://github.com/kashif/firedup/}},
+  year =         {2019}
+}
+```
