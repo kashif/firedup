@@ -103,7 +103,7 @@ If you use Fired Up in your research please  use the following BibTeX entry:
 
 ```BibTeX
 @misc{rasulfiredup,
-  author =       {Kashif Rasul and Josh Achiam},
+  author =       {Kashif Rasul and Joshua Achiam},
   title =        {Fired Up},
   howpublished = {\url{https://github.com/kashif/firedup/}},
   year =         {2019}
