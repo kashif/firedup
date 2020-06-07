@@ -9,12 +9,14 @@ def count_vars(module):
 
 
 class MLP(nn.Module):
-    def __init__(self,
-                 layers,
-                 activation=torch.tanh,
-                 output_activation=None,
-                 output_scale=1,
-                 output_squeeze=False):
+    def __init__(
+        self,
+        layers,
+        activation=torch.tanh,
+        output_activation=None,
+        output_scale=1,
+        output_squeeze=False,
+    ):
         super(MLP, self).__init__()
         self.layers = nn.ModuleList()
         self.activation = activation
@@ -38,12 +40,14 @@ class MLP(nn.Module):
 
 
 class ActorCritic(nn.Module):
-    def __init__(self,
-                 in_features,
-                 action_space,
-                 hidden_sizes=(400, 300),
-                 activation=torch.relu,
-                 output_activation=torch.tanh):
+    def __init__(
+        self,
+        in_features,
+        action_space,
+        hidden_sizes=(400, 300),
+        activation=torch.relu,
+        output_activation=torch.tanh,
+    ):
         super(ActorCritic, self).__init__()
 
         action_dim = action_space.shape[0]
@@ -53,11 +57,13 @@ class ActorCritic(nn.Module):
             layers=[in_features] + list(hidden_sizes) + [action_dim],
             activation=activation,
             output_activation=output_activation,
-            output_scale=action_scale)
+            output_scale=action_scale,
+        )
         self.q = MLP(
             layers=[in_features + action_dim] + list(hidden_sizes) + [1],
             activation=activation,
-            output_squeeze=True)
+            output_squeeze=True,
+        )
 
     def forward(self, x, a):
         pi = self.policy(x)

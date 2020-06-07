@@ -36,7 +36,8 @@ class ReplayBuffer:
             obs2=self.obs2_buf[idxs],
             acts=self.acts_buf[idxs],
             rews=self.rews_buf[idxs],
-            done=self.done_buf[idxs])
+            done=self.done_buf[idxs],
+        )
 
 
 """
@@ -46,23 +47,25 @@ Deep Deterministic Policy Gradient (DDPG)
 """
 
 
-def ddpg(env_fn,
-         actor_critic=core.ActorCritic,
-         ac_kwargs=dict(),
-         seed=0,
-         steps_per_epoch=5000,
-         epochs=100,
-         replay_size=int(1e6),
-         gamma=0.99,
-         polyak=0.995,
-         pi_lr=1e-3,
-         q_lr=1e-3,
-         batch_size=100,
-         start_steps=10000,
-         act_noise=0.1,
-         max_ep_len=1000,
-         logger_kwargs=dict(),
-         save_freq=1):
+def ddpg(
+    env_fn,
+    actor_critic=core.ActorCritic,
+    ac_kwargs=dict(),
+    seed=0,
+    steps_per_epoch=5000,
+    epochs=100,
+    replay_size=int(1e6),
+    gamma=0.99,
+    polyak=0.995,
+    pi_lr=1e-3,
+    q_lr=1e-3,
+    batch_size=100,
+    start_steps=10000,
+    act_noise=0.1,
+    max_ep_len=1000,
+    logger_kwargs=dict(),
+    save_freq=1,
+):
     """
 
     Args:
@@ -144,7 +147,7 @@ def ddpg(env_fn,
     act_limit = env.action_space.high[0]
 
     # Share information about action space with policy architecture
-    ac_kwargs['action_space'] = env.action_space
+    ac_kwargs["action_space"] = env.action_space
 
     # Main outputs from computation graph
     main = actor_critic(in_features=obs_dim, **ac_kwargs)
@@ -154,14 +157,13 @@ def ddpg(env_fn,
     target.eval()
 
     # Experience buffer
-    replay_buffer = ReplayBuffer(
-        obs_dim=obs_dim, act_dim=act_dim, size=replay_size)
+    replay_buffer = ReplayBuffer(obs_dim=obs_dim, act_dim=act_dim, size=replay_size)
 
     # Count variables
     var_counts = tuple(
-        core.count_vars(module) for module in [main.policy, main.q, main])
-    print('\nNumber of parameters: \t pi: %d, \t q: %d, \t total: %d\n' %
-          var_counts)
+        core.count_vars(module) for module in [main.policy, main.q, main]
+    )
+    print("\nNumber of parameters: \t pi: %d, \t q: %d, \t total: %d\n" % var_counts)
 
     # Separate train ops for pi, q
     pi_optimizer = torch.optim.Adam(main.policy.parameters(), lr=pi_lr)
@@ -227,11 +229,13 @@ def ddpg(env_fn,
             """
             for _ in range(ep_len):
                 batch = replay_buffer.sample_batch(batch_size)
-                (obs1, obs2, acts, rews, done) = (torch.Tensor(batch['obs1']),
-                                                  torch.Tensor(batch['obs2']),
-                                                  torch.Tensor(batch['acts']),
-                                                  torch.Tensor(batch['rews']),
-                                                  torch.Tensor(batch['done']))
+                (obs1, obs2, acts, rews, done) = (
+                    torch.Tensor(batch["obs1"]),
+                    torch.Tensor(batch["obs2"]),
+                    torch.Tensor(batch["acts"]),
+                    torch.Tensor(batch["rews"]),
+                    torch.Tensor(batch["done"]),
+                )
                 _, q, q_pi = main(obs1, acts)
                 _, _, q_pi_targ = target(obs2, acts)
 
@@ -255,10 +259,10 @@ def ddpg(env_fn,
                 logger.store(LossPi=pi_loss)
 
                 # Polyak averaging for target parameters
-                for p_main, p_target in zip(main.parameters(),
-                                            target.parameters()):
-                    p_target.data.copy_(polyak * p_target.data +
-                                        (1 - polyak) * p_main.data)
+                for p_main, p_target in zip(main.parameters(), target.parameters()):
+                    p_target.data.copy_(
+                        polyak * p_target.data + (1 - polyak) * p_main.data
+                    )
 
             logger.store(EpRet=ep_ret, EpLen=ep_len)
             o, r, d, ep_ret, ep_len = env.reset(), 0, False, 0, 0
@@ -269,38 +273,40 @@ def ddpg(env_fn,
 
             # Save model
             if (epoch % save_freq == 0) or (epoch == epochs - 1):
-                logger.save_state({'env': env}, main, None)
+                logger.save_state({"env": env}, main, None)
 
             # Test the performance of the deterministic version of the agent.
             test_agent()
 
             # Log info about epoch
-            logger.log_tabular('Epoch', epoch)
-            logger.log_tabular('EpRet', with_min_and_max=True)
-            logger.log_tabular('TestEpRet', with_min_and_max=True)
-            logger.log_tabular('EpLen', average_only=True)
-            logger.log_tabular('TestEpLen', average_only=True)
-            logger.log_tabular('TotalEnvInteracts', t)
-            logger.log_tabular('QVals', with_min_and_max=True)
-            logger.log_tabular('LossPi', average_only=True)
-            logger.log_tabular('LossQ', average_only=True)
-            logger.log_tabular('Time', time.time() - start_time)
+            logger.log_tabular("Epoch", epoch)
+            logger.log_tabular("EpRet", with_min_and_max=True)
+            logger.log_tabular("TestEpRet", with_min_and_max=True)
+            logger.log_tabular("EpLen", average_only=True)
+            logger.log_tabular("TestEpLen", average_only=True)
+            logger.log_tabular("TotalEnvInteracts", t)
+            logger.log_tabular("QVals", with_min_and_max=True)
+            logger.log_tabular("LossPi", average_only=True)
+            logger.log_tabular("LossQ", average_only=True)
+            logger.log_tabular("Time", time.time() - start_time)
             logger.dump_tabular()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     import argparse
+
     parser = argparse.ArgumentParser()
-    parser.add_argument('--env', type=str, default='HalfCheetah-v2')
-    parser.add_argument('--hid', type=int, default=300)
-    parser.add_argument('--l', type=int, default=1)
-    parser.add_argument('--gamma', type=float, default=0.99)
-    parser.add_argument('--seed', '-s', type=int, default=0)
-    parser.add_argument('--epochs', type=int, default=50)
-    parser.add_argument('--exp_name', type=str, default='ddpg')
+    parser.add_argument("--env", type=str, default="HalfCheetah-v2")
+    parser.add_argument("--hid", type=int, default=300)
+    parser.add_argument("--l", type=int, default=1)
+    parser.add_argument("--gamma", type=float, default=0.99)
+    parser.add_argument("--seed", "-s", type=int, default=0)
+    parser.add_argument("--epochs", type=int, default=50)
+    parser.add_argument("--exp_name", type=str, default="ddpg")
     args = parser.parse_args()
 
     from fireup.utils.run_utils import setup_logger_kwargs
+
     logger_kwargs = setup_logger_kwargs(args.exp_name, args.seed)
 
     ddpg(
@@ -310,4 +316,5 @@ if __name__ == '__main__':
         gamma=args.gamma,
         seed=args.seed,
         epochs=args.epochs,
-        logger_kwargs=logger_kwargs)
+        logger_kwargs=logger_kwargs,
+    )

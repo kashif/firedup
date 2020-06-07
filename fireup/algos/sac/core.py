@@ -15,12 +15,14 @@ def count_vars(module):
 
 
 class MLP(nn.Module):
-    def __init__(self,
-                 layers,
-                 activation=torch.tanh,
-                 output_activation=None,
-                 output_scale=1,
-                 output_squeeze=False):
+    def __init__(
+        self,
+        layers,
+        activation=torch.tanh,
+        output_activation=None,
+        output_scale=1,
+        output_squeeze=False,
+    ):
         super(MLP, self).__init__()
         self.layers = nn.ModuleList()
         self.activation = activation
@@ -44,8 +46,9 @@ class MLP(nn.Module):
 
 
 class GaussianPolicy(nn.Module):
-    def __init__(self, in_features, hidden_sizes, activation,
-                 output_activation, action_space):
+    def __init__(
+        self, in_features, hidden_sizes, activation, output_activation, action_space
+    ):
         super(GaussianPolicy, self).__init__()
 
         action_dim = action_space.shape[0]
@@ -55,10 +58,10 @@ class GaussianPolicy(nn.Module):
         self.net = MLP(
             layers=[in_features] + list(hidden_sizes),
             activation=activation,
-            output_activation=activation)
+            output_activation=activation,
+        )
 
-        self.mu = nn.Linear(
-            in_features=list(hidden_sizes)[-1], out_features=action_dim)
+        self.mu = nn.Linear(in_features=list(hidden_sizes)[-1], out_features=action_dim)
         """
         Because this algorithm maximizes trade-off of reward and entropy,
         entropy must be unique to state---and therefore log_stds need
@@ -79,9 +82,9 @@ class GaussianPolicy(nn.Module):
         it makes much of a difference.
         """
         self.log_std = nn.Sequential(
-            nn.Linear(
-                in_features=list(hidden_sizes)[-1], out_features=action_dim),
-            nn.Tanh())
+            nn.Linear(in_features=list(hidden_sizes)[-1], out_features=action_dim),
+            nn.Tanh(),
+        )
 
     def forward(self, x):
         output = self.net(x)
@@ -89,8 +92,7 @@ class GaussianPolicy(nn.Module):
         if self.output_activation:
             mu = self.output_activation(mu)
         log_std = self.log_std(output)
-        log_std = LOG_STD_MIN + 0.5 * (LOG_STD_MAX - LOG_STD_MIN) * (
-            log_std + 1)
+        log_std = LOG_STD_MIN + 0.5 * (LOG_STD_MAX - LOG_STD_MIN) * (log_std + 1)
 
         policy = Normal(mu, torch.exp(log_std))
         pi = policy.rsample()  # Critical: must be rsample() and not sample()
@@ -104,7 +106,7 @@ class GaussianPolicy(nn.Module):
 
         return pi_scaled, mu_scaled, logp_pi
 
-    def _clip_but_pass_gradient(self, x, l=-1., u=1.):
+    def _clip_but_pass_gradient(self, x, l=-1.0, u=1.0):
         clip_up = (x > u).float()
         clip_low = (x < l).float()
         return x + ((u - x) * clip_up + (l - x) * clip_low).detach()
@@ -115,41 +117,45 @@ class GaussianPolicy(nn.Module):
 
         # To avoid evil machine precision error, strictly clip 1-pi**2 to [0,1] range.
         logp_pi -= torch.sum(
-            torch.log(self._clip_but_pass_gradient(1 - pi**2, l=0, u=1) + EPS),
-            dim=1)
+            torch.log(self._clip_but_pass_gradient(1 - pi ** 2, l=0, u=1) + EPS), dim=1
+        )
 
         return mu, pi, logp_pi
 
 
 class ActorCritic(nn.Module):
-    def __init__(self,
-                 in_features,
-                 action_space,
-                 hidden_sizes=(400, 300),
-                 activation=torch.relu,
-                 output_activation=None,
-                 policy=GaussianPolicy):
+    def __init__(
+        self,
+        in_features,
+        action_space,
+        hidden_sizes=(400, 300),
+        activation=torch.relu,
+        output_activation=None,
+        policy=GaussianPolicy,
+    ):
         super(ActorCritic, self).__init__()
 
         action_dim = action_space.shape[0]
 
-        self.policy = policy(in_features, hidden_sizes, activation,
-                             output_activation, action_space)
+        self.policy = policy(
+            in_features, hidden_sizes, activation, output_activation, action_space
+        )
 
         self.vf_mlp = MLP(
-            [in_features] + list(hidden_sizes) + [1],
-            activation,
-            output_squeeze=True)
+            [in_features] + list(hidden_sizes) + [1], activation, output_squeeze=True
+        )
 
         self.q1 = MLP(
             [in_features + action_dim] + list(hidden_sizes) + [1],
             activation,
-            output_squeeze=True)
+            output_squeeze=True,
+        )
 
         self.q2 = MLP(
             [in_features + action_dim] + list(hidden_sizes) + [1],
             activation,
-            output_squeeze=True)
+            output_squeeze=True,
+        )
 
     def forward(self, x, a):
         pi, mu, logp_pi = self.policy(x)

@@ -36,7 +36,8 @@ class ReplayBuffer:
             obs2=self.obs2_buf[idxs],
             acts=self.acts_buf[idxs],
             rews=self.rews_buf[idxs],
-            done=self.done_buf[idxs])
+            done=self.done_buf[idxs],
+        )
 
 
 """
@@ -44,26 +45,29 @@ class ReplayBuffer:
 Deep Q-Network
 
 """
-def dqn(env_fn,
-        dqnetwork=core.DQNetwork,
-        ac_kwargs=dict(),
-        seed=0,
-        steps_per_epoch=5000,
-        epochs=100,
-        replay_size=int(1e6),
-        gamma=0.99,
-        min_replay_history=20000,
-        epsilon_decay_period=250000,
-        epsilon_train=0.01,
-        epsilon_eval=0.001,
-        lr=1e-3,
-        max_ep_len=1000,
-        update_period=4,
-        target_update_period=8000,
-        batch_size=100,
-        logger_kwargs=dict(),
-        save_freq=1):
 
+
+def dqn(
+    env_fn,
+    dqnetwork=core.DQNetwork,
+    ac_kwargs=dict(),
+    seed=0,
+    steps_per_epoch=5000,
+    epochs=100,
+    replay_size=int(1e6),
+    gamma=0.99,
+    min_replay_history=20000,
+    epsilon_decay_period=250000,
+    epsilon_train=0.01,
+    epsilon_eval=0.001,
+    lr=1e-3,
+    max_ep_len=1000,
+    update_period=4,
+    target_update_period=8000,
+    batch_size=100,
+    logger_kwargs=dict(),
+    save_freq=1,
+):
 
     logger = EpochLogger(**logger_kwargs)
     logger.save_config(locals())
@@ -73,10 +77,10 @@ def dqn(env_fn,
 
     env, test_env = env_fn(), env_fn()
     obs_dim = env.observation_space.shape[0]
-    act_dim = 1 #env.action_space.shape
+    act_dim = 1  # env.action_space.shape
 
     # Share information about action space with policy architecture
-    ac_kwargs['action_space'] = env.action_space
+    ac_kwargs["action_space"] = env.action_space
 
     # Main computation graph
     main = dqnetwork(in_features=obs_dim, **ac_kwargs)
@@ -85,13 +89,11 @@ def dqn(env_fn,
     target = dqnetwork(in_features=obs_dim, **ac_kwargs)
 
     # Experience buffer
-    replay_buffer = ReplayBuffer(
-        obs_dim=obs_dim, act_dim=act_dim, size=replay_size)
+    replay_buffer = ReplayBuffer(obs_dim=obs_dim, act_dim=act_dim, size=replay_size)
 
     # Count variables
-    var_counts = tuple(
-        core.count_vars(module) for module in [main.q, main])
-    print(('\nNumber of parameters: \t q: %d, \t total: %d\n')%var_counts)
+    var_counts = tuple(core.count_vars(module) for module in [main.q, main])
+    print(("\nNumber of parameters: \t q: %d, \t total: %d\n") % var_counts)
 
     # Value train op
     value_params = main.q.parameters()
@@ -132,10 +134,8 @@ def dqn(env_fn,
 
         # the epsilon value used for exploration during training
         epsilon = core.linearly_decaying_epsilon(
-            epsilon_decay_period,
-            t,
-            min_replay_history,
-            epsilon_train)
+            epsilon_decay_period, t, min_replay_history, epsilon_train
+        )
         a = get_action(o, epsilon)
 
         # Step the env
@@ -163,11 +163,13 @@ def dqn(env_fn,
         if replay_buffer.size > min_replay_history and t % update_period == 0:
             main.train()
             batch = replay_buffer.sample_batch(batch_size)
-            (obs1, obs2, acts, rews, done) = (torch.Tensor(batch['obs1']),
-                                              torch.Tensor(batch['obs2']),
-                                              torch.Tensor(batch['acts']),
-                                              torch.Tensor(batch['rews']),
-                                              torch.Tensor(batch['done']))
+            (obs1, obs2, acts, rews, done) = (
+                torch.Tensor(batch["obs1"]),
+                torch.Tensor(batch["obs2"]),
+                torch.Tensor(batch["acts"]),
+                torch.Tensor(batch["rews"]),
+                torch.Tensor(batch["done"]),
+            )
             q_pi = main(obs1).gather(1, acts.long()).squeeze()
             q_pi_targ, _ = target(obs2).max(1)
 
@@ -193,19 +195,19 @@ def dqn(env_fn,
 
             # Save model
             if (epoch % save_freq == 0) or (epoch == epochs - 1):
-                logger.save_state({'env': env}, main, None)
+                logger.save_state({"env": env}, main, None)
 
             # Test the performance of the deterministic version of the agent.
             test_agent()
 
             # Log info about epoch
-            logger.log_tabular('Epoch', epoch)
-            logger.log_tabular('EpRet', with_min_and_max=True)
-            logger.log_tabular('TestEpRet', with_min_and_max=True)
-            logger.log_tabular('EpLen', average_only=True)
-            logger.log_tabular('TestEpLen', average_only=True)
-            logger.log_tabular('TotalEnvInteracts', t)
-            logger.log_tabular('QVals', with_min_and_max=True)
-            logger.log_tabular('LossQ', average_only=True)
-            logger.log_tabular('Time', time.time() - start_time)
+            logger.log_tabular("Epoch", epoch)
+            logger.log_tabular("EpRet", with_min_and_max=True)
+            logger.log_tabular("TestEpRet", with_min_and_max=True)
+            logger.log_tabular("EpLen", average_only=True)
+            logger.log_tabular("TestEpLen", average_only=True)
+            logger.log_tabular("TotalEnvInteracts", t)
+            logger.log_tabular("QVals", with_min_and_max=True)
+            logger.log_tabular("LossQ", average_only=True)
+            logger.log_tabular("Time", time.time() - start_time)
             logger.dump_tabular()
