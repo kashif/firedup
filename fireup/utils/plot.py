@@ -38,34 +38,10 @@ def plot_data(
     if isinstance(data, list):
         data = pd.concat(data, ignore_index=True)
     sns.set(style="darkgrid", font_scale=1.5)
-    sns.tsplot(
-        data=data,
-        time=xaxis,
-        value=value,
-        unit="Unit",
-        condition=condition,
-        ci="sd",
-        **kwargs
-    )
-    """
-    If you upgrade to any version of Seaborn greater than 0.8.1, switch from 
-    tsplot to lineplot replacing L29 with:
-
-        sns.lineplot(data=data, x=xaxis, y=value, hue=condition, ci='sd', **kwargs)
-
-    Changes the colorscheme and the default legend style, though.
-    """
-    plt.legend(loc="best").set_draggable(True)
-    # plt.legend(loc='upper center', ncol=3, handlelength=1,
-    #           borderaxespad=0., prop={'size': 13})
-
-    """
-    For the version of the legend used in the Spinning Up benchmarking page, 
-    swap L38 with:
-
-    plt.legend(loc='upper center', ncol=6, handlelength=1,
-               mode="expand", borderaxespad=0., prop={'size': 13})
-    """
+    sns.lineplot(data=data, x=xaxis, y=value, hue=condition, ci="sd", **kwargs)
+    plt.legend(
+        loc="upper center", ncol=3, handlelength=1, borderaxespad=0.0, prop={"size": 13}
+    ).set_draggable(True)
 
     xscale = np.max(np.asarray(data[xaxis])) > 5e3
     if xscale:
@@ -134,7 +110,10 @@ def get_all_datasets(all_logdirs, legend=None, select=None, exclude=None):
             logdirs += [logdir]
         else:
             basedir = osp.dirname(logdir)
-            fulldir = lambda x: osp.join(basedir, x)
+
+            def fulldir(x):
+                return osp.join(basedir, x)
+
             prefix = logdir.split(os.sep)[-1]
             listdir = os.listdir(basedir)
             logdirs += sorted([fulldir(x) for x in listdir if prefix in x])

@@ -8,6 +8,7 @@ import os, subprocess, sys
 import os.path as osp
 import string
 from textwrap import dedent
+import torch
 
 
 # Command line args that will go to ExperimentGrid.run, and must possess unique
