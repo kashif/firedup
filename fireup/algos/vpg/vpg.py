@@ -6,7 +6,7 @@ import time
 import scipy.signal
 import fireup.algos.vpg.core as core
 from fireup.utils.logx import EpochLogger
-from fireup.utils.mpi_torch import average_gradients, sync_all_params
+from fireup.utils.mpi_torch import average_gradients, sync_all_params, setup_pytorch_for_mpi
 from fireup.utils.mpi_tools import mpi_fork, proc_id, mpi_statistics_scalar, num_procs
 
 
@@ -188,6 +188,8 @@ def vpg(
             the current policy and value function.
 
     """
+
+    setup_pytorch_for_mpi()
 
     logger = EpochLogger(**logger_kwargs)
     logger.save_config(locals())

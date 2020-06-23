@@ -1,5 +1,16 @@
 import torch
-from fireup.utils.mpi_tools import broadcast, mpi_avg
+from fireup.utils.mpi_tools import broadcast, mpi_avg, num_procs
+
+
+def setup_pytorch_for_mpi():
+    """
+    Avoid slowdowns caused by each separate process's PyTorch using
+    more than its fair share of CPU resources.
+    """
+    if torch.get_num_threads() == 1:
+        return
+    fair_num_threads = max(int(torch.get_num_threads() / num_procs()), 1)
+    torch.set_num_threads(fair_num_threads)
 
 
 def sync_all_params(param, root=0):

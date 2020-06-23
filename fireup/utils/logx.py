@@ -10,9 +10,13 @@ import joblib
 import shutil
 import numpy as np
 import torch
-import os.path as osp, time, atexit, os
+import os.path as osp
+import time
+import atexit
+import os
 from fireup.utils.mpi_tools import proc_id, mpi_statistics_scalar
 from fireup.utils.serialization_utils import convert_json
+import wandb
 
 
 color2num = dict(
@@ -73,6 +77,7 @@ class Logger:
         """
         if proc_id() == 0:
             self.output_dir = output_dir or "/tmp/experiments/%i" % int(time.time())
+            wandb.init(project="firedup", name=self.output_dir, group=exp_name)
             if osp.exists(self.output_dir):
                 print(
                     "Warning: Log dir %s already exists! Storing info there anyway."
@@ -94,6 +99,7 @@ class Logger:
         self.log_headers = []
         self.log_current_row = {}
         self.exp_name = exp_name
+
 
     def log(self, msg, color="green"):
         """Print a colorized message to stdout."""
@@ -121,6 +127,7 @@ class Logger:
             % key
         )
         self.log_current_row[key] = val
+
 
     def save_config(self, config):
         """
@@ -197,8 +204,10 @@ class Logger:
             fmt = "| " + keystr + "s | %15s |"
             n_slashes = 22 + max_key_len
             print("-" * n_slashes)
-            for key in self.log_headers:
+            for i, key in enumerate(self.log_headers):
                 val = self.log_current_row.get(key, "")
+                total_env_interacts = self.log_current_row.get("TotalEnvInteracts", "")
+                wandb.log({key: val}, step=total_env_interacts, commit=(i+1)==len(self.log_headers))
                 valstr = "%8.3g" % val if hasattr(val, "__float__") else val
                 print(fmt % (key, valstr))
                 vals.append(val)

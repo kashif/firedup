@@ -8,7 +8,7 @@ import time
 import scipy.signal
 import fireup.algos.trpo.core as core
 from fireup.utils.logx import EpochLogger
-from fireup.utils.mpi_torch import sync_all_params, average_gradients
+from fireup.utils.mpi_torch import sync_all_params, average_gradients, setup_pytorch_for_mpi
 from fireup.utils.mpi_tools import (
     mpi_fork,
     mpi_avg,
@@ -256,6 +256,8 @@ def trpo(
             almost the same.
 
     """
+
+    setup_pytorch_for_mpi()
 
     logger = EpochLogger(**logger_kwargs)
     logger.save_config(locals())

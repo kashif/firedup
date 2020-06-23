@@ -466,8 +466,8 @@ class ExperimentGrid:
             variant = {
                 base: {
                     param : {
-                        a : 1,
-                        b : 2
+                        one : 1,
+                        two : 2
                         }
                     }
                 }
