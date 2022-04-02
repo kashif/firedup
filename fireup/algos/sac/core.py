@@ -1,9 +1,9 @@
 import numpy as np
 import torch
 import torch.nn as nn
+from gym.spaces import Box, Discrete
 from torch.distributions.categorical import Categorical
 from torch.distributions.normal import Normal
-from gym.spaces import Box, Discrete
 
 LOG_STD_MAX = 2
 LOG_STD_MIN = -20

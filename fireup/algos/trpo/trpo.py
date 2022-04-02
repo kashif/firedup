@@ -1,26 +1,27 @@
+import time
+
+import gym
 import numpy as np
+import scipy.signal
 import torch
 import torch.nn.functional as F
-from torch.nn.utils import vector_to_parameters, parameters_to_vector
-import gym
 from gym.spaces import Box
-import time
-import scipy.signal
+from torch.nn.utils import parameters_to_vector, vector_to_parameters
+
 import fireup.algos.trpo.core as core
 from fireup.utils.logx import EpochLogger
-from fireup.utils.mpi_torch import (
-    sync_all_params,
-    average_gradients,
-    setup_pytorch_for_mpi,
-)
 from fireup.utils.mpi_tools import (
-    mpi_fork,
     mpi_avg,
-    proc_id,
+    mpi_fork,
     mpi_statistics_scalar,
     num_procs,
+    proc_id,
 )
-
+from fireup.utils.mpi_torch import (
+    average_gradients,
+    setup_pytorch_for_mpi,
+    sync_all_params,
+)
 
 EPS = 1e-8
 

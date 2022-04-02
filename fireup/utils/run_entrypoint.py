@@ -1,6 +1,6 @@
-import zlib
-import pickle
 import base64
+import pickle
+import zlib
 
 if __name__ == "__main__":
     import argparse

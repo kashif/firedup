@@ -1,29 +1,30 @@
+import base64
+import json
+import os
+import os.path as osp
+import string
+import subprocess
+import sys
+import time
+import zlib
+from copy import deepcopy
+from subprocess import CalledProcessError
+from textwrap import dedent
+
+import cloudpickle
+import numpy as np
+import psutil
+from tqdm import trange
+
 from fireup.user_config import (
     DEFAULT_DATA_DIR,
-    FORCE_DATESTAMP,
     DEFAULT_SHORTHAND,
+    FORCE_DATESTAMP,
     WAIT_BEFORE_LAUNCH,
 )
 from fireup.utils.logx import colorize
 from fireup.utils.mpi_tools import mpi_fork
 from fireup.utils.serialization_utils import convert_json
-import base64
-from copy import deepcopy
-import cloudpickle
-import json
-import numpy as np
-import os
-import os.path as osp
-import psutil
-import string
-import subprocess
-from subprocess import CalledProcessError
-import sys
-from textwrap import dedent
-import time
-from tqdm import trange
-import zlib
-
 
 DIV_LINE_WIDTH = 80
 

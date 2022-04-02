@@ -5,19 +5,20 @@ Some simple logging functionality, inspired by rllab's logging.
 Logs to a tab-separated-values file (path/to/output_directory/progress.txt)
 
 """
+import atexit
 import json
-import joblib
+import os
+import os.path as osp
 import shutil
+import time
+
+import joblib
 import numpy as np
 import torch
-import os.path as osp
-import time
-import atexit
-import os
-from fireup.utils.mpi_tools import proc_id, mpi_statistics_scalar
-from fireup.utils.serialization_utils import convert_json
-import wandb
 
+import wandb
+from fireup.utils.mpi_tools import mpi_statistics_scalar, proc_id
+from fireup.utils.serialization_utils import convert_json
 
 color2num = dict(
     gray=30,

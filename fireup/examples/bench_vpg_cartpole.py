@@ -1,6 +1,7 @@
-from fireup.utils.run_utils import ExperimentGrid
-from fireup import vpg
 import torch
+
+from fireup import vpg
+from fireup.utils.run_utils import ExperimentGrid
 
 if __name__ == "__main__":
     import argparse

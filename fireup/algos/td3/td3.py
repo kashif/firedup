@@ -1,8 +1,10 @@
+import time
+
+import gym
 import numpy as np
 import torch
 import torch.nn.functional as F
-import gym
-import time
+
 from fireup.algos.td3 import core
 from fireup.utils.logx import EpochLogger
 

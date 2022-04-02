@@ -1,11 +1,11 @@
 import numpy as np
 import torch
 import torch.nn as nn
-from torch.nn.utils import parameters_to_vector
-from torch.distributions.categorical import Categorical
-from torch.distributions.normal import Normal
-from torch.distributions.kl import kl_divergence
 from gym.spaces import Box, Discrete
+from torch.distributions.categorical import Categorical
+from torch.distributions.kl import kl_divergence
+from torch.distributions.normal import Normal
+from torch.nn.utils import parameters_to_vector
 
 
 def count_vars(module):

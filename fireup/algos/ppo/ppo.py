@@ -1,22 +1,24 @@
+import time
+
+import gym
 import numpy as np
+import scipy.signal
 import torch
 import torch.nn.functional as F
-import gym
-import time
-import scipy.signal
+
 import fireup.algos.ppo.core as core
 from fireup.utils.logx import EpochLogger
-from fireup.utils.mpi_torch import (
-    average_gradients,
-    sync_all_params,
-    setup_pytorch_for_mpi,
-)
 from fireup.utils.mpi_tools import (
-    mpi_fork,
     mpi_avg,
-    proc_id,
+    mpi_fork,
     mpi_statistics_scalar,
     num_procs,
+    proc_id,
+)
+from fireup.utils.mpi_torch import (
+    average_gradients,
+    setup_pytorch_for_mpi,
+    sync_all_params,
 )
 
 

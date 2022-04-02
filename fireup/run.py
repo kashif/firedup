@@ -1,15 +1,18 @@
+import argparse
+import json
+import os
+import os.path as osp
+import string
+import subprocess
+import sys
+from textwrap import dedent
+
+import gym
+import torch
+
 import fireup
 from fireup.utils.run_utils import ExperimentGrid
 from fireup.utils.serialization_utils import convert_json
-import argparse
-import gym
-import json
-import os, subprocess, sys
-import os.path as osp
-import string
-from textwrap import dedent
-import torch
-
 
 # Command line args that will go to ExperimentGrid.run, and must possess unique
 # values (therefore must be treated separately).
