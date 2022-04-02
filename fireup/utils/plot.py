@@ -54,9 +54,9 @@ def plot_data(
 def get_datasets(logdir, condition=None):
     """
     Recursively look through logdir for output files produced by
-    fireup.logx.Logger. 
+    fireup.logx.Logger.
 
-    Assumes that any file "progress.txt" is a valid hit. 
+    Assumes that any file "progress.txt" is a valid hit.
     """
     global exp_idx
     global units
@@ -98,10 +98,10 @@ def get_datasets(logdir, condition=None):
 def get_all_datasets(all_logdirs, legend=None, select=None, exclude=None):
     """
     For every entry in all_logdirs,
-        1) check if the entry is a real directory and if it is, 
-           pull data from it; 
+        1) check if the entry is a real directory and if it is,
+           pull data from it;
 
-        2) if not, check to see if the entry is a prefix for a 
+        2) if not, check to see if the entry is a prefix for a
            real directory, and pull data from that.
     """
     logdirs = []

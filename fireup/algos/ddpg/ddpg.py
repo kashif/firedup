@@ -71,8 +71,8 @@ def ddpg(
     Args:
         env_fn : A function which creates a copy of the environment.
             The environment must satisfy the OpenAI Gym API.
-            
-        actor_critic: The agent's main model which takes some states ``x`` and 
+
+        actor_critic: The agent's main model which takes some states ``x`` and
             and actions ``a`` and returns a tuple of:
 
             ===========  ================  ======================================

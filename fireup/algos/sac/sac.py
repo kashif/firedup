@@ -74,7 +74,7 @@ def sac(
         env_fn : A function which creates a copy of the environment.
             The environment must satisfy the OpenAI Gym API.
 
-        actor_critic: The agent's model which takes the state ``x`` and 
+        actor_critic: The agent's model which takes the state ``x`` and
             action, ``a`` and returns a tuple of:
 
             ===========  ================  ======================================
@@ -133,7 +133,7 @@ def sac(
 
         alpha (float): Entropy regularization coefficient. (Equivalent to
             inverse of reward scale in the original SAC paper.)
-        
+
         optimize_alpha (bool): Automatic entropy tuning flag.
 
         batch_size (int): Minibatch size for SGD.
@@ -387,4 +387,3 @@ if __name__ == "__main__":
         epochs=args.epochs,
         logger_kwargs=logger_kwargs,
     )
-

@@ -2,7 +2,7 @@ import json
 
 
 def convert_json(obj):
-    """ Convert obj to a version which can be serialized with JSON. """
+    """Convert obj to a version which can be serialized with JSON."""
     if is_json_serializable(obj):
         return obj
     else:

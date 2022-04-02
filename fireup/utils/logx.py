@@ -100,7 +100,6 @@ class Logger:
         self.log_current_row = {}
         self.exp_name = exp_name
 
-
     def log(self, msg, color="green"):
         """Print a colorized message to stdout."""
         if proc_id() == 0:
@@ -127,7 +126,6 @@ class Logger:
             % key
         )
         self.log_current_row[key] = val
-
 
     def save_config(self, config):
         """
@@ -207,7 +205,11 @@ class Logger:
             for i, key in enumerate(self.log_headers):
                 val = self.log_current_row.get(key, "")
                 total_env_interacts = self.log_current_row.get("TotalEnvInteracts", "")
-                wandb.log({key: val}, step=total_env_interacts, commit=(i+1)==len(self.log_headers))
+                wandb.log(
+                    {key: val},
+                    step=total_env_interacts,
+                    commit=(i + 1) == len(self.log_headers),
+                )
                 valstr = "%8.3g" % val if hasattr(val, "__float__") else val
                 print(fmt % (key, valstr))
                 vals.append(val)

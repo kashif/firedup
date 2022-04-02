@@ -26,27 +26,49 @@ class ReplayBuffer:
         self.acts_buf[self.ptr] = act
         self.rews_buf[self.ptr] = rew
         self.done_buf[self.ptr] = done
-        self.ptr = (self.ptr+1) % self.max_size
-        self.size = min(self.size+1, self.max_size)
+        self.ptr = (self.ptr + 1) % self.max_size
+        self.size = min(self.size + 1, self.max_size)
 
     def sample_batch(self, batch_size=32):
         idxs = np.random.randint(0, self.size, size=batch_size)
-        return dict(obs1=self.obs1_buf[idxs],
-                    obs2=self.obs2_buf[idxs],
-                    acts=self.acts_buf[idxs],
-                    rews=self.rews_buf[idxs],
-                    done=self.done_buf[idxs])
+        return dict(
+            obs1=self.obs1_buf[idxs],
+            obs2=self.obs2_buf[idxs],
+            acts=self.acts_buf[idxs],
+            rews=self.rews_buf[idxs],
+            done=self.done_buf[idxs],
+        )
+
 
 """
 
 TD3 (Twin Delayed DDPG)
 
 """
-def td3(env_fn, actor_critic=core.ActorCritic, ac_kwargs=dict(), seed=0,
-        steps_per_epoch=5000, epochs=100, replay_size=int(1e6), gamma=0.99,
-        polyak=0.995, pi_lr=1e-3, q_lr=1e-3, batch_size=100, start_steps=10000,
-        act_noise=0.1, target_noise=0.2, noise_clip=0.5, policy_delay=2,
-        max_ep_len=1000, logger_kwargs=dict(), save_freq=1):
+
+
+def td3(
+    env_fn,
+    actor_critic=core.ActorCritic,
+    ac_kwargs=dict(),
+    seed=0,
+    steps_per_epoch=5000,
+    epochs=100,
+    replay_size=int(1e6),
+    gamma=0.99,
+    polyak=0.995,
+    pi_lr=1e-3,
+    q_lr=1e-3,
+    batch_size=100,
+    start_steps=10000,
+    act_noise=0.1,
+    target_noise=0.2,
+    noise_clip=0.5,
+    policy_delay=2,
+    max_ep_len=1000,
+    logger_kwargs=dict(),
+    save_freq=1,
+):
     """
 
     Args:
@@ -140,7 +162,7 @@ def td3(env_fn, actor_critic=core.ActorCritic, ac_kwargs=dict(), seed=0,
     act_limit = env.action_space.high[0]
 
     # Share information about action space with policy architecture
-    ac_kwargs['action_space'] = env.action_space
+    ac_kwargs["action_space"] = env.action_space
 
     # Main outputs from computation graph
     main = actor_critic(in_features=obs_dim, **ac_kwargs)
@@ -152,9 +174,13 @@ def td3(env_fn, actor_critic=core.ActorCritic, ac_kwargs=dict(), seed=0,
     replay_buffer = ReplayBuffer(obs_dim=obs_dim, act_dim=act_dim, size=replay_size)
 
     # Count variables
-    var_counts = tuple(core.count_vars(module) for module in
-                       [main.policy, main.q1, main.q2, main])
-    print('\nNumber of parameters: \t pi: %d, \t q1: %d, \t q2: %d, \t total: %d\n'%var_counts)
+    var_counts = tuple(
+        core.count_vars(module) for module in [main.policy, main.q1, main.q2, main]
+    )
+    print(
+        "\nNumber of parameters: \t pi: %d, \t q1: %d, \t q2: %d, \t total: %d\n"
+        % var_counts
+    )
 
     # Separate train ops for pi, q
     pi_optimizer = torch.optim.Adam(main.policy.parameters(), lr=pi_lr)
@@ -166,14 +192,14 @@ def td3(env_fn, actor_critic=core.ActorCritic, ac_kwargs=dict(), seed=0,
     target.load_state_dict(main.state_dict())
 
     def get_action(o, noise_scale):
-        pi = main.policy(torch.Tensor(o.reshape(1,-1)))
+        pi = main.policy(torch.Tensor(o.reshape(1, -1)))
         a = pi.detach().numpy()[0] + noise_scale * np.random.randn(act_dim)
         return np.clip(a, -act_limit, act_limit)
 
     def test_agent(n=10):
         for _ in range(n):
             o, r, d, ep_ret, ep_len = test_env.reset(), 0, False, 0, 0
-            while not(d or (ep_len == max_ep_len)):
+            while not (d or (ep_len == max_ep_len)):
                 # Take deterministic actions at test time (noise_scale=0)
                 o, r, d, _ = test_env.step(get_action(o, 0))
                 ep_ret += r
@@ -205,7 +231,7 @@ def td3(env_fn, actor_critic=core.ActorCritic, ac_kwargs=dict(), seed=0,
         # Ignore the "done" signal if it comes from hitting the time
         # horizon (that is, when it's an artificial terminal signal
         # that isn't based on the agent's state)
-        d = False if ep_len==max_ep_len else d
+        d = False if ep_len == max_ep_len else d
 
         # Store experience to replay buffer
         replay_buffer.store(o, a, r, o2, d)
@@ -222,18 +248,21 @@ def td3(env_fn, actor_critic=core.ActorCritic, ac_kwargs=dict(), seed=0,
             """
             for j in range(ep_len):
                 batch = replay_buffer.sample_batch(batch_size)
-                (obs1, obs2, acts, rews, done) = (torch.tensor(batch['obs1']),
-                                                  torch.tensor(batch['obs2']),
-                                                  torch.tensor(batch['acts']),
-                                                  torch.tensor(batch['rews']),
-                                                  torch.tensor(batch['done']))
+                (obs1, obs2, acts, rews, done) = (
+                    torch.tensor(batch["obs1"]),
+                    torch.tensor(batch["obs2"]),
+                    torch.tensor(batch["acts"]),
+                    torch.tensor(batch["rews"]),
+                    torch.tensor(batch["done"]),
+                )
                 q1 = main.q1(torch.cat((obs1, acts), dim=1))
                 q2 = main.q2(torch.cat((obs1, acts), dim=1))
                 pi_targ = target.policy(obs2)
 
                 # Target policy smoothing, by adding clipped noise to target actions
-                epsilon = torch.normal(torch.zeros_like(pi_targ),
-                                       target_noise*torch.ones_like(pi_targ))
+                epsilon = torch.normal(
+                    torch.zeros_like(pi_targ), target_noise * torch.ones_like(pi_targ)
+                )
 
                 epsilon = torch.clamp(epsilon, -noise_clip, noise_clip)
                 a2 = torch.clamp(pi_targ + epsilon, -act_limit, act_limit)
@@ -255,8 +284,11 @@ def td3(env_fn, actor_critic=core.ActorCritic, ac_kwargs=dict(), seed=0,
                 q_loss.backward()
                 q_optimizer.step()
 
-                logger.store(LossQ=q_loss.item(), Q1Vals=q1.detach().numpy(),
-                             Q2Vals=q2.detach().numpy())
+                logger.store(
+                    LossQ=q_loss.item(),
+                    Q1Vals=q1.detach().numpy(),
+                    Q2Vals=q2.detach().numpy(),
+                )
 
                 if j % policy_delay == 0:
                     q1_pi = main.q1(torch.cat((obs1, main.policy(obs1)), dim=1))
@@ -271,7 +303,9 @@ def td3(env_fn, actor_critic=core.ActorCritic, ac_kwargs=dict(), seed=0,
 
                     # Polyak averaging for target variables
                     for p_main, p_target in zip(main.parameters(), target.parameters()):
-                        p_target.data.copy_(polyak*p_target.data + (1 - polyak)*p_main.data)
+                        p_target.data.copy_(
+                            polyak * p_target.data + (1 - polyak) * p_main.data
+                        )
 
                     logger.store(LossPi=pi_loss.item())
 
@@ -283,42 +317,50 @@ def td3(env_fn, actor_critic=core.ActorCritic, ac_kwargs=dict(), seed=0,
             epoch = t // steps_per_epoch
 
             # Save model
-            if (epoch % save_freq == 0) or (epoch == epochs-1):
-                logger.save_state({'env': env}, main, None)
+            if (epoch % save_freq == 0) or (epoch == epochs - 1):
+                logger.save_state({"env": env}, main, None)
 
             # Test the performance of the deterministic version of the agent.
             test_agent()
 
             # Log info about epoch
-            logger.log_tabular('Epoch', epoch)
-            logger.log_tabular('EpRet', with_min_and_max=True)
-            logger.log_tabular('TestEpRet', with_min_and_max=True)
-            logger.log_tabular('EpLen', average_only=True)
-            logger.log_tabular('TestEpLen', average_only=True)
-            logger.log_tabular('TotalEnvInteracts', t)
-            logger.log_tabular('Q1Vals', with_min_and_max=True)
-            logger.log_tabular('Q2Vals', with_min_and_max=True)
-            logger.log_tabular('LossPi', average_only=True)
-            logger.log_tabular('LossQ', average_only=True)
-            logger.log_tabular('Time', time.time()-start_time)
+            logger.log_tabular("Epoch", epoch)
+            logger.log_tabular("EpRet", with_min_and_max=True)
+            logger.log_tabular("TestEpRet", with_min_and_max=True)
+            logger.log_tabular("EpLen", average_only=True)
+            logger.log_tabular("TestEpLen", average_only=True)
+            logger.log_tabular("TotalEnvInteracts", t)
+            logger.log_tabular("Q1Vals", with_min_and_max=True)
+            logger.log_tabular("Q2Vals", with_min_and_max=True)
+            logger.log_tabular("LossPi", average_only=True)
+            logger.log_tabular("LossQ", average_only=True)
+            logger.log_tabular("Time", time.time() - start_time)
             logger.dump_tabular()
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     import argparse
+
     parser = argparse.ArgumentParser()
-    parser.add_argument('--env', type=str, default='HalfCheetah-v2')
-    parser.add_argument('--hid', type=int, default=300)
-    parser.add_argument('--l', type=int, default=1)
-    parser.add_argument('--gamma', type=float, default=0.99)
-    parser.add_argument('--seed', '-s', type=int, default=0)
-    parser.add_argument('--epochs', type=int, default=50)
-    parser.add_argument('--exp_name', type=str, default='td3')
+    parser.add_argument("--env", type=str, default="HalfCheetah-v2")
+    parser.add_argument("--hid", type=int, default=300)
+    parser.add_argument("--l", type=int, default=1)
+    parser.add_argument("--gamma", type=float, default=0.99)
+    parser.add_argument("--seed", "-s", type=int, default=0)
+    parser.add_argument("--epochs", type=int, default=50)
+    parser.add_argument("--exp_name", type=str, default="td3")
     args = parser.parse_args()
 
     from fireup.utils.run_utils import setup_logger_kwargs
+
     logger_kwargs = setup_logger_kwargs(args.exp_name, args.seed)
 
-    td3(lambda : gym.make(args.env), actor_critic=core.ActorCritic,
-        ac_kwargs=dict(hidden_sizes=[args.hid]*args.l),
-        gamma=args.gamma, seed=args.seed, epochs=args.epochs,
-        logger_kwargs=logger_kwargs)
+    td3(
+        lambda: gym.make(args.env),
+        actor_critic=core.ActorCritic,
+        ac_kwargs=dict(hidden_sizes=[args.hid] * args.l),
+        gamma=args.gamma,
+        seed=args.seed,
+        epochs=args.epochs,
+        logger_kwargs=logger_kwargs,
+    )

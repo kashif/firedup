@@ -117,7 +117,7 @@ class GaussianPolicy(nn.Module):
 
         # To avoid evil machine precision error, strictly clip 1-pi**2 to [0,1] range.
         logp_pi -= torch.sum(
-            torch.log(self._clip_but_pass_gradient(1 - pi ** 2, l=0, u=1) + EPS), dim=1
+            torch.log(self._clip_but_pass_gradient(1 - pi**2, l=0, u=1) + EPS), dim=1
         )
 
         return mu, pi, logp_pi

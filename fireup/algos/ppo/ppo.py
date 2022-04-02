@@ -6,7 +6,11 @@ import time
 import scipy.signal
 import fireup.algos.ppo.core as core
 from fireup.utils.logx import EpochLogger
-from fireup.utils.mpi_torch import average_gradients, sync_all_params, setup_pytorch_for_mpi
+from fireup.utils.mpi_torch import (
+    average_gradients,
+    sync_all_params,
+    setup_pytorch_for_mpi,
+)
 from fireup.utils.mpi_tools import (
     mpi_fork,
     mpi_avg,
@@ -328,7 +332,7 @@ def ppo(
 
             # save and log
             buf.store(o, a.detach().numpy(), r, v_t.item(), logp_t.detach().numpy())
-            logger.store(VVals=v_t)
+            logger.store(VVals=v_t.item())
 
             o, r, d, _ = env.step(a.detach().numpy()[0])
             ep_ret += r
@@ -409,4 +413,3 @@ if __name__ == "__main__":
         epochs=args.epochs,
         logger_kwargs=logger_kwargs,
     )
-
