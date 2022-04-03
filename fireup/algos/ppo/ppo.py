@@ -314,13 +314,13 @@ def ppo(
         clipped = (ratio > (1 + clip_ratio)) | (ratio < (1 - clip_ratio))
         cf = (clipped.float()).mean()
         logger.store(
-            LossPi=pi_l_old,
-            LossV=v_l_old,
-            KL=kl,
-            Entropy=ent,
-            ClipFrac=cf,
-            DeltaLossPi=(pi_l_new - pi_l_old),
-            DeltaLossV=(v_l_new - v_l_old),
+            LossPi=pi_l_old.item(),
+            LossV=v_l_old.item(),
+            KL=kl.item(),
+            Entropy=ent.item(),
+            ClipFrac=cf.item(),
+            DeltaLossPi=(pi_l_new - pi_l_old).item(),
+            DeltaLossV=(v_l_new - v_l_old).item(),
         )
 
     start_time = time.time()
