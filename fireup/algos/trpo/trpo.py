@@ -398,10 +398,10 @@ def trpo(
         # Log changes from update
         logger.store(
             LossPi=pi_l_old,
-            LossV=v_l_old,
+            LossV=v_l_old.item(),
             KL=kl,
-            DeltaLossPi=(pi_l_new - pi_l_old),
-            DeltaLossV=(v_l_new - v_l_old),
+            DeltaLossPi=(pi_l_new - pi_l_old).item(),
+            DeltaLossV=(v_l_new - v_l_old).item(),
         )
 
     start_time = time.time()
@@ -422,7 +422,7 @@ def trpo(
                 logp_t.detach().numpy(),
                 core.values_as_sorted_list(info_t),
             )
-            logger.store(VVals=v_t)
+            logger.store(VVals=v_t.item())
 
             o, r, d, _ = env.step(a.detach().numpy()[0])
             ep_ret += r
