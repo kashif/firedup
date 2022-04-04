@@ -238,27 +238,30 @@ def ddpg(
                     torch.Tensor(batch["rews"]),
                     torch.Tensor(batch["done"]),
                 )
-                _, q, q_pi = main(obs1, acts)
                 _, _, q_pi_targ = target(obs2, acts)
 
                 # Bellman backup for Q function
                 backup = (rews + gamma * (1 - done) * q_pi_targ).detach()
 
-                # DDPG losses
-                pi_loss = -q_pi.mean()
+                # DDPG Q loss
+                _, q, _ = main(obs1, acts)
                 q_loss = F.mse_loss(q, backup)
 
                 # Q-learning update
                 q_optimizer.zero_grad()
                 q_loss.backward()
                 q_optimizer.step()
-                logger.store(LossQ=q_loss, QVals=q.data.numpy())
+                logger.store(LossQ=q_loss.item(), QVals=q.data.numpy())
+
+                # DDPG Policy loss
+                _, _, q_pi = main(obs1, acts)
+                pi_loss = -q_pi.mean()
 
                 # Policy update
                 pi_optimizer.zero_grad()
                 pi_loss.backward()
                 pi_optimizer.step()
-                logger.store(LossPi=pi_loss)
+                logger.store(LossPi=pi_loss.item())
 
                 # Polyak averaging for target parameters
                 for p_main, p_target in zip(main.parameters(), target.parameters()):
