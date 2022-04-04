@@ -269,12 +269,12 @@ def vpg(
         v_l_new = F.mse_loss(v, ret)
         kl = (logp_old - logp).mean()  # a sample estimate for KL-divergence
         logger.store(
-            LossPi=pi_loss,
-            LossV=v_l_old,
-            KL=kl,
-            Entropy=ent,
-            DeltaLossPi=(pi_l_new - pi_loss),
-            DeltaLossV=(v_l_new - v_l_old),
+            LossPi=pi_loss.item(),
+            LossV=v_l_old.item(),
+            KL=kl.item(),
+            Entropy=ent.item(),
+            DeltaLossPi=(pi_l_new - pi_loss).item(),
+            DeltaLossV=(v_l_new - v_l_old).item(),
         )
 
     start_time = time.time()
@@ -288,7 +288,7 @@ def vpg(
 
             # save and log
             buf.store(o, a.detach().numpy(), r, v_t.item(), logp_t.detach().numpy())
-            logger.store(VVals=v_t)
+            logger.store(VVals=v_t.item())
 
             o, r, d, _ = env.step(a.detach().numpy()[0])
             ep_ret += r
