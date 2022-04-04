@@ -1,7 +1,10 @@
-import torch
+import os
 
+import torch
 from fireup import vpg
 from fireup.utils.run_utils import ExperimentGrid
+
+os.environ["WANDB_MODE"] = "offline"
 
 if __name__ == "__main__":
     import argparse
