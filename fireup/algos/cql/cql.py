@@ -1,6 +1,7 @@
 import time
 
 import gym
+import d4rl  # Import required to register environments
 import numpy as np
 import torch
 import torch.nn.functional as F
@@ -11,25 +12,16 @@ from fireup.utils.logx import EpochLogger
 
 class ReplayBuffer:
     """
-    A simple FIFO experience replay buffer for SAC agents.
+    Offline RL data loader
     """
 
-    def __init__(self, obs_dim, act_dim, size):
-        self.obs1_buf = np.zeros([size, obs_dim], dtype=np.float32)
-        self.obs2_buf = np.zeros([size, obs_dim], dtype=np.float32)
-        self.acts_buf = np.zeros([size, act_dim], dtype=np.float32)
-        self.rews_buf = np.zeros(size, dtype=np.float32)
-        self.done_buf = np.zeros(size, dtype=np.float32)
-        self.ptr, self.size, self.max_size = 0, 0, size
-
-    def store(self, obs, act, rew, next_obs, done):
-        self.obs1_buf[self.ptr] = obs
-        self.obs2_buf[self.ptr] = next_obs
-        self.acts_buf[self.ptr] = act
-        self.rews_buf[self.ptr] = rew
-        self.done_buf[self.ptr] = done
-        self.ptr = (self.ptr + 1) % self.max_size
-        self.size = min(self.size + 1, self.max_size)
+    def __init__(self, dataset):
+        self.size = dataset["observations"].shape[0] - 1
+        self.obs1_buf = dataset["observations"][:-1]
+        self.obs2_buf = dataset["observations"][1:]
+        self.acts_buf = dataset["actions"][:-1]
+        self.rews_buf = dataset["rewards"][:-1]
+        self.done_buf = dataset["terminals"][:-1]
 
     def sample_batch(self, batch_size=32):
         idxs = np.random.randint(0, self.size, size=batch_size)
@@ -58,14 +50,12 @@ def cql(
     seed=0,
     steps_per_epoch=5000,
     epochs=100,
-    replay_size=int(1e6),
     gamma=0.99,
     polyak=0.995,
     lr=1e-3,
     alpha=0.2,
     optimize_alpha=True,
     batch_size=100,
-    start_steps=10000,
     max_ep_len=1000,
     logger_kwargs=dict(),
     save_freq=1,
@@ -117,8 +107,6 @@ def cql(
 
         epochs (int): Number of epochs to run and train agent.
 
-        replay_size (int): Maximum length of replay buffer.
-
         gamma (float): Discount factor. (Always between 0 and 1.)
 
         polyak (float): Interpolation factor in polyak averaging for target
@@ -139,9 +127,6 @@ def cql(
         optimize_alpha (bool): Automatic entropy tuning flag.
 
         batch_size (int): Minibatch size for SGD.
-
-        start_steps (int): Number of steps for uniform-random action selection,
-            before running real policy. Helps exploration.
 
         max_ep_len (int): Maximum length of trajectory / episode / rollout.
 
@@ -171,8 +156,8 @@ def cql(
     # Target value network
     target = actor_critic(in_features=obs_dim, **ac_kwargs)
 
-    # Experience buffer
-    replay_buffer = ReplayBuffer(obs_dim=obs_dim, act_dim=act_dim, size=replay_size)
+    # Offline Experience buffer
+    replay_buffer = ReplayBuffer(env.get_dataset())
 
     # Count variables
     var_counts = tuple(
@@ -212,6 +197,7 @@ def cql(
         pi, mu, _ = main.policy(torch.Tensor(o.reshape(1, -1)))
         return mu.detach().numpy()[0] if deterministic else pi.detach().numpy()[0]
 
+    @torch.inference_mode()
     def test_agent(n=10):
         for _ in range(n):
             o, r, d, ep_ret, ep_len = test_env.reset(), 0, False, 0, 0
@@ -223,115 +209,75 @@ def cql(
             logger.store(TestEpRet=ep_ret, TestEpLen=ep_len)
 
     start_time = time.time()
-    o, r, d, ep_ret, ep_len = env.reset(), 0, False, 0, 0
     total_steps = steps_per_epoch * epochs
 
     # Main loop: collect experience in env and update/log each epoch
     for t in range(total_steps):
         """
-        Until start_steps have elapsed, randomly sample actions
-        from a uniform distribution for better exploration. Afterwards,
-        use the learned policy.
+        Train CQL by sampling batches from the offline replay buffer.
         """
-        if t > start_steps:
-            a = get_action(o)
-        else:
-            a = env.action_space.sample()
+        batch = replay_buffer.sample_batch(batch_size)
+        (obs1, obs2, acts, rews, done) = (
+            torch.Tensor(batch["obs1"]),
+            torch.Tensor(batch["obs2"]),
+            torch.Tensor(batch["acts"]),
+            torch.Tensor(batch["rews"]),
+            torch.Tensor(batch["done"]),
+        )
+        _, _, logp_pi, q1, q2, q1_pi, q2_pi, v = main(obs1, acts)
+        v_targ = target.vf_mlp(obs2)
 
-        # Step the env
-        o2, r, d, _ = env.step(a)
-        ep_ret += r
-        ep_len += 1
+        # Automatic entropy tuning
+        if optimize_alpha:
+            alpha_loss = -(log_alpha * (logp_pi + target_entropy).detach()).mean()
+            alpha_optimizer.zero_grad()
+            alpha_loss.backward()
+            alpha_optimizer.step()
+            alpha = log_alpha.exp()
+            logger.store(LossAlpha=alpha_loss.item(), Alpha=alpha.item())
 
-        # Ignore the "done" signal if it comes from hitting the time
-        # horizon (that is, when it's an artificial terminal signal
-        # that isn't based on the agent's state)
-        d = False if ep_len == max_ep_len else d
+        # Min Double-Q:
+        min_q_pi = torch.min(q1_pi, q2_pi)
 
-        # Store experience to replay buffer
-        replay_buffer.store(o, a, r, o2, d)
+        # Targets for Q and V regression
+        q_backup = (rews + gamma * (1 - done) * v_targ).detach()
+        v_backup = (min_q_pi - alpha * logp_pi).detach()
 
-        # Super critical, easy to overlook step: make sure to update
-        # most recent observation!
-        o = o2
+        # Soft actor-critic losses
+        pi_loss = (alpha * logp_pi - min_q_pi).mean()
+        q1_loss = 0.5 * F.mse_loss(q1, q_backup)
+        q2_loss = 0.5 * F.mse_loss(q2, q_backup)
+        v_loss = 0.5 * F.mse_loss(v, v_backup)
+        value_loss = q1_loss + q2_loss + v_loss
 
-        if d or (ep_len == max_ep_len):
-            """
-            Perform all SAC updates at the end of the trajectory.
-            This is a slight difference from the SAC specified in the
-            original paper.
-            """
-            for _ in range(ep_len):
-                batch = replay_buffer.sample_batch(batch_size)
-                (obs1, obs2, acts, rews, done) = (
-                    torch.Tensor(batch["obs1"]),
-                    torch.Tensor(batch["obs2"]),
-                    torch.Tensor(batch["acts"]),
-                    torch.Tensor(batch["rews"]),
-                    torch.Tensor(batch["done"]),
-                )
-                _, _, logp_pi, q1, q2, q1_pi, q2_pi, v = main(obs1, acts)
-                v_targ = target.vf_mlp(obs2)
+        # CQL loss
 
-                # Automatic entropy tuning
-                if optimize_alpha:
-                    alpha_loss = -(
-                        log_alpha * (logp_pi + target_entropy).detach()
-                    ).mean()
-                    alpha_optimizer.zero_grad()
-                    alpha_loss.backward()
-                    alpha_optimizer.step()
-                    logger.store(LossAlpha=alpha_loss.item(), Alpha=alpha.item())
+        # Policy train op
+        pi_optimizer.zero_grad()
+        pi_loss.backward()
+        pi_optimizer.step()
 
-                    alpha = log_alpha.exp()
+        # Value train op
+        value_optimizer.zero_grad()
+        value_loss.backward()
+        value_optimizer.step()
 
-                # Min Double-Q:
-                min_q_pi = torch.min(q1_pi, q2_pi)
+        # Polyak averaging for target parameters
+        for p_main, p_target in zip(
+            main.vf_mlp.parameters(), target.vf_mlp.parameters()
+        ):
+            p_target.data.copy_(polyak * p_target.data + (1 - polyak) * p_main.data)
 
-                # Targets for Q and V regression
-                q_backup = (rews + gamma * (1 - done) * v_targ).detach()
-                v_backup = (min_q_pi - alpha * logp_pi).detach()
-
-                # Soft actor-critic losses
-                pi_loss = (alpha * logp_pi - min_q_pi).mean()
-                q1_loss = 0.5 * F.mse_loss(q1, q_backup)
-                q2_loss = 0.5 * F.mse_loss(q2, q_backup)
-                v_loss = 0.5 * F.mse_loss(v, v_backup)
-                value_loss = q1_loss + q2_loss + v_loss
-
-                # CQL loss
-
-                # Policy train op
-                pi_optimizer.zero_grad()
-                pi_loss.backward()
-                pi_optimizer.step()
-
-                # Value train op
-                value_optimizer.zero_grad()
-                value_loss.backward()
-                value_optimizer.step()
-
-                # Polyak averaging for target parameters
-                for p_main, p_target in zip(
-                    main.vf_mlp.parameters(), target.vf_mlp.parameters()
-                ):
-                    p_target.data.copy_(
-                        polyak * p_target.data + (1 - polyak) * p_main.data
-                    )
-
-                logger.store(
-                    LossPi=pi_loss.item(),
-                    LossQ1=q1_loss.item(),
-                    LossQ2=q2_loss.item(),
-                    LossV=v_loss.item(),
-                    Q1Vals=q1.detach().numpy(),
-                    Q2Vals=q2.detach().numpy(),
-                    VVals=v.detach().numpy(),
-                    LogPi=logp_pi.detach().numpy(),
-                )
-
-            logger.store(EpRet=ep_ret, EpLen=ep_len)
-            o, r, d, ep_ret, ep_len = env.reset(), 0, False, 0, 0
+        logger.store(
+            LossPi=pi_loss.item(),
+            LossQ1=q1_loss.item(),
+            LossQ2=q2_loss.item(),
+            LossV=v_loss.item(),
+            Q1Vals=q1.detach().numpy(),
+            Q2Vals=q2.detach().numpy(),
+            VVals=v.detach().numpy(),
+            LogPi=logp_pi.detach().numpy(),
+        )
 
         # End of epoch wrap-up
         if t > 0 and t % steps_per_epoch == 0:
@@ -346,9 +292,7 @@ def cql(
 
             # Log info about epoch
             logger.log_tabular("Epoch", epoch)
-            logger.log_tabular("EpRet", with_min_and_max=True)
             logger.log_tabular("TestEpRet", with_min_and_max=True)
-            logger.log_tabular("EpLen", average_only=True)
             logger.log_tabular("TestEpLen", average_only=True)
             logger.log_tabular("TotalEnvInteracts", t)
             logger.log_tabular("Q1Vals", with_min_and_max=True)
@@ -383,7 +327,7 @@ if __name__ == "__main__":
 
     logger_kwargs = setup_logger_kwargs(args.exp_name, args.seed)
 
-    sac(
+    cql(
         lambda: gym.make(args.env),
         actor_critic=core.ActorCritic,
         ac_kwargs=dict(hidden_sizes=[args.hid] * args.l),

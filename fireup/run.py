@@ -31,7 +31,7 @@ SUBSTITUTIONS = {
 MPI_COMPATIBLE_ALGOS = ["vpg", "trpo", "ppo"]
 
 # Algo names (used in a few places)
-BASE_ALGO_NAMES = ["vpg", "trpo", "ppo", "ddpg", "td3", "sac", "dqn"]
+BASE_ALGO_NAMES = ["vpg", "trpo", "ppo", "ddpg", "td3", "sac", "dqn", "cql"]
 
 
 def friendly_err(err_msg):

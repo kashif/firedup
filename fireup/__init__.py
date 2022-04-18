@@ -6,6 +6,7 @@ from fireup.algos.sac.sac import sac
 from fireup.algos.td3.td3 import td3
 from fireup.algos.trpo.trpo import trpo
 from fireup.algos.vpg.vpg import vpg
+from fireup.algos.cql.cql import cql
 
 # Loggers
 from fireup.utils.logx import EpochLogger, Logger

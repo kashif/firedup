@@ -198,6 +198,7 @@ def td3(
         a = pi.detach().numpy()[0] + noise_scale * np.random.randn(act_dim)
         return np.clip(a, -act_limit, act_limit)
 
+    @torch.inference_mode()
     def test_agent(n=10):
         for _ in range(n):
             o, r, d, ep_ret, ep_len = test_env.reset(), 0, False, 0, 0

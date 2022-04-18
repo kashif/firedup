@@ -116,6 +116,7 @@ def dqn(
             # return the action with highest Q-value for this observation
             return torch.argmax(q_values, dim=1).item()
 
+    @torch.inference_mode()
     def test_agent(n=10):
         for _ in range(n):
             o, r, d, ep_ret, ep_len = test_env.reset(), 0, False, 0, 0
