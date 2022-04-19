@@ -54,6 +54,11 @@ def cql(
     polyak=0.995,
     lr=1e-3,
     alpha=0.2,
+    temperature=1.0,
+    num_actions=10,
+    lagrangian=False,
+    lagrangian_thresh=5.0,
+    min_q_weight=5.0,
     optimize_alpha=True,
     batch_size=100,
     max_ep_len=1000,
@@ -124,6 +129,16 @@ def cql(
         alpha (float): Entropy regularization coefficient. (Equivalent to
             inverse of reward scale in the original SAC paper.)
 
+        temperature (float): CQL loss temperature.
+
+        num_actions (int): Number of actions to sample for CQL loss.
+
+        lagrangian (bool): Whether to use the Lagrangian for Alpha Prime (in CQL loss).
+
+        lagrangian_thresh (float): Threshold for Lagrangian.
+
+        min_q_weight (float): Minimum Q weight multiplier for CQL loss.
+
         optimize_alpha (bool): Automatic entropy tuning flag.
 
         batch_size (int): Minibatch size for SGD.
@@ -146,6 +161,8 @@ def cql(
     env, test_env = env_fn(), env_fn()
     obs_dim = env.observation_space.shape[0]
     act_dim = env.action_space.shape[0]
+    act_low = env.action_space.low[0]
+    act_high = env.action_space.high[0]
 
     # Share information about action space with policy architecture
     ac_kwargs["action_space"] = env.action_space
@@ -251,6 +268,13 @@ def cql(
         value_loss = q1_loss + q2_loss + v_loss
 
         # CQL loss
+        rand_act = torch.Tensor(
+            np.random.uniform(
+                act_low,
+                act_high,
+                size=(num_actions * act_dim, env.action_space.shape[-1]),
+            )
+        )
 
         # Policy train op
         pi_optimizer.zero_grad()
