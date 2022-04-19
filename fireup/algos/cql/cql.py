@@ -16,12 +16,12 @@ class ReplayBuffer:
     """
 
     def __init__(self, dataset):
-        self.size = dataset["observations"].shape[0] - 1
-        self.obs1_buf = dataset["observations"][:-1]
-        self.obs2_buf = dataset["observations"][1:]
-        self.acts_buf = dataset["actions"][:-1]
-        self.rews_buf = dataset["rewards"][:-1]
-        self.done_buf = dataset["terminals"][:-1]
+        self.size = dataset["observations"].shape[0]
+        self.obs1_buf = dataset["observations"]
+        self.obs2_buf = dataset["next_observations"]
+        self.acts_buf = dataset["actions"]
+        self.rews_buf = dataset["rewards"]
+        self.done_buf = dataset["terminals"]
 
     def sample_batch(self, batch_size=32):
         idxs = np.random.randint(0, self.size, size=batch_size)
@@ -128,7 +128,7 @@ def cql(
 
         batch_size (int): Minibatch size for SGD.
 
-        max_ep_len (int): Maximum length of trajectory / episode / rollout.
+        max_ep_len (int): Maximum length of trajectory / episode / rollout for testing.
 
         logger_kwargs (dict): Keyword args for EpochLogger.
 
@@ -157,7 +157,7 @@ def cql(
     target = actor_critic(in_features=obs_dim, **ac_kwargs)
 
     # Offline Experience buffer
-    replay_buffer = ReplayBuffer(env.get_dataset())
+    replay_buffer = ReplayBuffer(d4rl.qlearning_dataset(env))
 
     # Count variables
     var_counts = tuple(
