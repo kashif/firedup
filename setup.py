@@ -30,6 +30,7 @@ setup(
         "torch>=1.5.1",
         "tqdm",
         "wandb",
+        "d4rl",
     ],
     description="PyTorch clone of OpenAI's Spinning Up which is a teaching tools for introducing people to deep RL.",
     author="Kashif Rasul, Joshua Achiam",
